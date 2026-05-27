@@ -51,6 +51,7 @@ The 6 phases below mirror the Beta Guide Appendix exactly. Each phase ends with 
 1. **Detect existing project.** If working folder has `agent-network.yaml` + `exchange.json` + `brokers/`, ask: *"Edit this one, or scaffold new in a sibling folder?"* Default edit (Workflow B). If new, get name and continue in sibling.
 2. **Detect schema version.** `schemaVersion: 1.0.0` → route to converter.
 3. **Confirm intent in one sentence:** *"You want me to build a new Agent Broker that does X. Sound right?"*
+4. **Capture network `info`** for `agent-network.yaml`: ask for `info.label` (required) and `info.description` (optional). Default `info.version` to `1.0.0` unless user provides one.
 
 ## Step 1: Functional Requirements (Beta Guide Phase 1 — be strict)
 
