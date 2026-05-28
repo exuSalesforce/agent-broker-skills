@@ -1,6 +1,6 @@
 ---
 name: mulesoft-agent-broker-v1-to-v2-converter
-description: Convert a MuleSoft Agent Network V1 project (`schemaVersion: 1.0.0`) into a V2 project (`agentNetwork: "2.0.0"`). Each V1 broker becomes a V2 broker with one orchestrator node — no graph splitting, no prompt rewriting. Use when the user asks to upgrade, convert, migrate, translate, or port an Agent Network / Agent Broker / Daisy planner from V1 to V2, or whenever the working folder contains a V1 `agent-network.yaml`.
+description: Convert a MuleSoft Agent Network V1 project (`schemaVersion: 1.0.0`) into a V2 project (`agentNetwork: 2.0.0`). Each V1 broker becomes a V2 broker with one orchestrator node — no graph splitting, no prompt rewriting. Use when the user asks to upgrade, convert, migrate, translate, or port an Agent Network / Agent Broker / Daisy planner from V1 to V2, or whenever the working folder contains a V1 `agent-network.yaml`.
 license: Apache-2.0
 metadata:
   author: mulesoft-agent-broker-team
@@ -18,7 +18,7 @@ If the user wants a richer multi-node graph (split deterministic routing into `r
 ## When to use
 
 - Convert / upgrade / migrate / port an Agent Network or Agent Broker from V1 to V2.
-- The user mentions `schemaVersion: 1.0.0` and wants `agentNetwork: "2.0.0"`.
+- The user mentions `schemaVersion: 1.0.0` and wants `agentNetwork: 2.0.0`.
 - Working folder contains a V1 `agent-network.yaml` and `exchange.json`.
 
 For general V2 questions (without converting), point at the builder skill instead.
@@ -44,7 +44,7 @@ Verify the working folder is actually a V1 Agent Network project. **Do not run t
 
 1. Determine working folder. If unclear, ask.
 2. Confirm both files exist: `agent-network.yaml` (or `.yml`) and `exchange.json`.
-3. Read the YAML — must have `schemaVersion: 1.0.0` at top level. (V2 uses `agentNetwork: "2.0.0"`.)
+3. Read the YAML — must have `schemaVersion: 1.0.0` at top level. (V2 uses `agentNetwork: 2.0.0`.)
 4. Read `exchange.json` — must have `"classifier": "agent-network"`. (V2 uses `"agentic-network"`.)
 
 If any check fails, **stop and ask the user to point you at the correct folder**:
@@ -69,7 +69,7 @@ V2 has these top-level sections: `agentNetwork`, `info`, `registry`, `context`, 
 
 | V1 location | V2 location | Notes |
 | --- | --- | --- |
-| `schemaVersion: 1.0.0` | `agentNetwork: "2.0.0"` | Required string. |
+| `schemaVersion: 1.0.0` | `agentNetwork: 2.0.0` | Required string. |
 | `label` (top level) | `info.label` | Required. |
 | (none in V1) | `info.version` | Required. Use `1.0.0`. |
 | `brokers.<id>.card.description` | `info.description` | If present, lift the broker's description into `info`. |
@@ -222,7 +222,7 @@ Tell the user:
 
 ## Common mistakes to avoid
 
-- **Don't** keep `schemaVersion: 1.0.0` — V2 uses `agentNetwork: "2.0.0"`.
+- **Don't** keep `schemaVersion: 1.0.0` — V2 uses `agentNetwork: 2.0.0`.
 - **Don't** keep V1's `agent-network` classifier — V2 uses `agentic-network`.
 - **Don't** invent extra nodes (router, generator, executor). The user wants a single orchestrator.
 - **Don't** rewrite the user's prompt to "improve" it.

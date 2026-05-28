@@ -15,7 +15,7 @@ customer-onboarding-v2/
 ## agent-network.yaml
 
 ```yaml
-agentNetwork: "2.0.0"
+agentNetwork: 2.0.0
 info:
   label: "Customer Onboarding Agent Network"
   version: 1.0.0

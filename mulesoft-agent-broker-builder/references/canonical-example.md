@@ -49,7 +49,7 @@ it-help-network/
 ## `agent-network.yaml`
 
 ```yaml
-agentNetwork: "2.0.0"
+agentNetwork: 2.0.0
 info:
   label: "IT Help Investigation Agent Network"
   version: v1

@@ -16,7 +16,7 @@ For multi-broker projects: one `.agent` per broker, each referenced from its own
 
 ## Top-level YAML markers
 
-- `agentNetwork: "2.0.0"` — quoted in canonical example. (V1 used `schemaVersion: 1.0.0`.)
+- `agentNetwork: 2.0.0` — unquoted (per Beta Guide). (V1 used `schemaVersion: 1.0.0`.)
 - `exchange.json` `"classifier": "agentic-network"` — V2. (V1 used `agent-network`.)
 - `info.version` accepts non-semver strings (`v1` works in canonical).
 - `policies` are part of V2 schema even though the MCP server's configure-instructions template (PR 1564) does not surface them in initial build. Use Workflow B.4 to add later.
