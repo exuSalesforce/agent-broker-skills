@@ -3,8 +3,8 @@ name: mulesoft-agent-broker-builder
 description: Build, edit, validate, publish, and deploy a MuleSoft Agent Broker (Agent Network V2) project end-to-end. Use whenever the user asks to build, create, scaffold, configure, edit, validate, publish, or deploy an Agent Broker, agent network V2, AgentScript, `.agent` file, or `agentNetwork: 2.0.0` project. Do NOT trigger for V1→V2 migration (use the converter skill).
 license: Apache-2.0
 metadata:
-  author: mulesoft-agent-broker-team
-  version: "3.1.0"
+  author: mule-dx-tooling
+  version: "1.0.0"
 ---
 
 # MuleSoft Agent Broker Builder
