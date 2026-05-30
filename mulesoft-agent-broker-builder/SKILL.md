@@ -11,7 +11,7 @@ metadata:
 
 Turns a natural-language description of a multi-agent workflow into a complete, validated, deployable Agent Network V2 project. Runs the Beta Guide's 6-phase guided experience and adds publish + deploy.
 
-Inside MuleSoft Vibes (Anypoint Code Builder), this skill replaces what `configure_agent_network_yaml` and `create_agent_network_project` would do, and calls the deterministic infra tools (`validate_project`, `publish_agent_network_assets`, `deploy_agent_network`, `search_asset`) when present. Fully portable to Claude Code, Cursor, Codex when those tools aren't available.
+For validate/publish/deploy, the skill prefers the **Anypoint CLI Agent Fabric plugin** (`mulesoft-anypoint-cli-agent-fabric-plugin`) — it's portable across Claude Code, Cursor, Codex, and Vibes, and is the same path CI/CD uses. Falls back to MCP tools (`validate_project`, `publish_agent_network_assets`, `deploy_agent_network`) when only the MuleSoft MCP server is present. Falls back to doc links when neither is available. `search_asset` is MCP-only (no CLI equivalent).
 
 ## When to use
 
@@ -23,22 +23,27 @@ If the YAML has `schemaVersion: 1.0.0`, this is V1 — stop and route to the con
 ## References (read on demand)
 
 - **`references/canonical-example.md`** — The complete IT Help Network V2 project, sourced verbatim from `mulesoft-emu/agent-fabric-specification`. The structural template — when in doubt, copy it.
-- **`references/gotchas.md`** — V2 syntax rules, compile-error rules, RULE-ASSET-MODE (inline vs Exchange), subagent-vs-orchestrator decision, auth casing, MCP tool integration, graceful degradation.
+- **`references/gotchas.md`** — V2 syntax rules, compile-error rules, RULE-ASSET-MODE (inline vs Exchange), subagent-vs-orchestrator decision, auth casing, CLI + MCP tooling integration, graceful degradation.
 
 The Beta Guide is the authoritative V2 syntax reference. When it goes public, this skill will link to it. Until then, the references above cover the gotchas and worked example.
 
-## MCP tool integration
+## Tooling integration (CLI-first, MCP-fallback)
 
-| Tool | Behavior |
-|---|---|
-| `create_agent_network_project` | Replaced — skill writes scaffold directly. |
-| `configure_agent_network_yaml` | Replaced — skill IS the guided experience. |
-| `validate_project` | Call when present (Step 6). Falls back to structural checklist. |
-| `search_asset` | Call when present (Steps 1–2). Falls back to asking the user. |
-| `publish_agent_network_assets` | Call when present (Step 7). Falls back to doc link. |
-| `deploy_agent_network` | Call when present (Step 8). Falls back to doc link. |
+| Capability | Step | Preferred: CLI | Fallback: MCP | Last resort |
+|---|---|---|---|---|
+| Scaffold project | 0 | Skill writes scaffold directly (CLI's `agent-network:project:create` overwrites our canonical structure). | `create_agent_network_project` — skip. | — |
+| Configure YAML | 0–5 | Skill IS the guided experience. | `configure_agent_network_yaml` — skip (returns prompt template that duplicates skill). | — |
+| Search Exchange | 1, 2 | *(no CLI equivalent)* | `search_asset` — call when present. | Ask user for `groupId`/`assetId`/`version`. |
+| Validate / build | 6 | `agent-network:project:build` — runs Maven validation, generates artifacts. | `validate_project` — call when present. | Structural checklist + doc link. |
+| Publish to Exchange | 7 | `agent-network:project:publish` | `publish_agent_network_assets` | Doc link. |
+| Deploy to runtime | 8 | `agent-network:project:deploy` | `deploy_agent_network` | Doc link. |
+| Set up gateways | one-time | `agent-network:setup:gateways` | *(no MCP equivalent)* | Doc link. |
 
-In Claude Code, MuleSoft tools appear with prefix `mcp__mulesoft__`. See `references/gotchas.md` § "MCP integration" for handshake details.
+**Detection order** at each step: (1) check CLI is installed via `command -v anypoint-cli-agent-fabric-plugin`. (2) if absent, check MCP tools (prefix `mcp__mulesoft__`). (3) else fall back.
+
+**CLI auth** is environment-based: `ANYPOINT_CLIENT_ID`, `ANYPOINT_CLIENT_SECRET`, `ANYPOINT_ORG`, `ANYPOINT_ENV`, optional `ANYPOINT_HOST`. Never paste credentials inline. If env vars are unset, point user at <https://docs.mulesoft.com/anypoint-cli/latest/auth>.
+
+See `references/gotchas.md` § "Tooling integration" for full command syntax, env-var details, and graceful-degradation paths.
 
 ---
 
@@ -173,8 +178,10 @@ Cleanup, then validate.
 4. Remove orphaned action definitions in `.agent` file.
 5. Remove empty YAML keys (`registry.llms:` with no entries → drop the key).
 
-**Validate:**
-- If `validate_project` is available, call it with `projectPath`. Otherwise run the structural checklist below and tell the user to run the runtime validator separately.
+**Validate (CLI-first):**
+- If `anypoint-cli-agent-fabric-plugin` is installed: run `anypoint-cli-agent-fabric-plugin agent-network project build --path <projectPath>` from the project dir. This validates schema and generates the deployable artifact.
+- Else if MCP `validate_project` is available: call it with `projectPath`.
+- Else: run the structural checklist below and tell the user to install the CLI plugin (`npm i mulesoft-anypoint-cli-agent-fabric-plugin`) or use the MCP server in their IDE.
 
 **Structural checklist:**
 - Every node reachable from trigger? No orphans.
@@ -197,25 +204,29 @@ When clean: *"Project is validated and ready. Want to publish to Exchange and de
 
 ## Step 7: Publish (optional)
 
-Only if user wants to.
+Only if user wants to. Confirm Anypoint auth context first (CLI env vars or MCP session). Confirm `exchange.json` has no empty secrets.
 
-Ask `assetVersion` (semver). Optional: `groupId` (defaults to active org), `projectPath`.
+**CLI-first:**
+- If CLI is installed: `anypoint-cli-agent-fabric-plugin agent-network project publish --path <projectPath>` (add `--environment <name>` if not Sandbox; add `--json` to capture asset URLs programmatically).
+- Else if MCP `publish_agent_network_assets` is available: call it with `assetVersion` (semver) and optional `groupId`.
+- Else: point at <https://docs.mulesoft.com/anypoint-code-builder/af-publish-agent-network-assets>.
 
-If `publish_agent_network_assets` is available, call it. Surface published asset URLs.
-
-If not available, point at: <https://docs.mulesoft.com/anypoint-code-builder/af-publish-agent-network-assets>. Don't paste CLI commands.
+Surface published asset URLs from the output.
 
 ## Step 8: Deploy (optional)
 
 Only if user wants to. Publish must have happened first.
 
-Required: a Managed Omni Gateway, filled-in `exchange.json` secrets, deployment target details.
+**One-time per private space:** if the target space has no gateways yet, run `anypoint-cli-agent-fabric-plugin agent-network setup gateways --target-space <name>` first. Defaults: `agent-network-ingress-gw`, `agent-network-egress-gw`, `agent-network-space`.
 
-Ask: `environmentName`, `privateSpaceName`, `ingressGatewayName`, `egressGatewayName`.
+Ask the user: `environmentName`, `targetSpace` (private space name), and any deployment properties for env-specific secrets (e.g., `--property openai.apiKey:STAGING_API_KEY`).
 
-If `deploy_agent_network` is available, call it. Surface deployment URL/ID.
+**CLI-first:**
+- If CLI is installed: `anypoint-cli-agent-fabric-plugin agent-network project deploy --environment <env> --target-space <space> [--property k:v ...] [--ingress-gw <name>] [--egress-gw <name>]`. Wait for completion (default) or pass `--dont-wait-for-agent-network` for CI pipelines.
+- Else if MCP `deploy_agent_network` is available: call it with `environmentName`, `privateSpaceName`, `ingressGatewayName`, `egressGatewayName`.
+- Else: point at <https://docs.mulesoft.com/anypoint-code-builder/af-deploy-agent-network-targets>.
 
-If not available, point at: <https://docs.mulesoft.com/anypoint-code-builder/af-deploy-agent-network-targets>.
+Surface deployment URL/ID from output.
 
 ---
 
