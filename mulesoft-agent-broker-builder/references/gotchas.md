@@ -370,7 +370,7 @@ The skill prefers the **Anypoint CLI Agent Fabric plugin** for validate/publish/
 |---|---|---|---|---|
 | Scaffold project | 0 | *(skip — skill writes scaffold)* | *(skip — `create_agent_network_project`)* | — |
 | Configure YAML | 0–5 | *(skill IS the experience)* | *(skip — `configure_agent_network_yaml` returns a duplicate prompt template)* | — |
-| Search Exchange | 1, 2 | *(no CLI equivalent)* | `search_asset` | Ask user for `groupId`/`assetId`/`version` |
+| Search Exchange | 1, 2 | `anypoint-cli-v4 exchange asset search` | `search_asset` | Ask user for `groupId`/`assetId`/`version` |
 | Validate / build | 6 | `agent-network project build` | `validate_project` | Structural checklist + doc link |
 | Publish to Exchange | 7 | `agent-network project publish` | `publish_agent_network_assets` | Doc link |
 | Deploy to runtime | 8 | `agent-network project deploy` | `deploy_agent_network` | Doc link |
@@ -380,7 +380,9 @@ The skill prefers the **Anypoint CLI Agent Fabric plugin** for validate/publish/
 
 In order at each integration point:
 
-1. **CLI:** `command -v anypoint-cli-agent-fabric-plugin` (succeeds → CLI available).
+1. **CLI:** `command -v` the relevant binary —
+   - `anypoint-cli-agent-fabric-plugin` for build/publish/deploy/setup-gateways
+   - `anypoint-cli-v4` for Exchange search and any general Anypoint operation
 2. **MCP:** Tool appears with prefix `mcp__mulesoft__` (e.g., `mcp__mulesoft__search_asset`).
 3. **Neither:** Fall back to doc link or user prompt.
 
@@ -388,23 +390,34 @@ Don't probe filesystems for credentials — let CLI/host abstract auth.
 
 ### CLI auth (env vars only — never inline)
 
+Both CLIs share Anypoint Platform auth via the same env vars:
+
 - `ANYPOINT_CLIENT_ID` / `ANYPOINT_CLIENT_SECRET` (connected app credentials)
 - `ANYPOINT_ORG` (org ID)
 - `ANYPOINT_ENV` (environment name; defaults to Sandbox)
 - `ANYPOINT_HOST` (defaults to `anypoint.mulesoft.com`; override for EU/Gov)
 
-If env vars are unset and CLI is being asked to do an auth-bearing action, point user at <https://docs.mulesoft.com/anypoint-cli/latest/auth>. Do not paste credentials, even temporarily.
+The general CLI also supports username/password auth via `anypoint-cli-v4 conf username <u>` / `conf password <p>` / `conf organization <o>`, but env-var/connected-app credentials are preferred for CI and shared sessions.
 
-Install: `npm i mulesoft-anypoint-cli-agent-fabric-plugin`. (Note: package was renamed from `anypoint-cli-agent-fabric-plugin` — use `--force` if hitting an EXIST conflict.)
+If env vars are unset and a CLI is being asked to do an auth-bearing action, point user at <https://docs.mulesoft.com/anypoint-cli/latest/auth>. Do not paste credentials, even temporarily.
 
-### `search_asset` — Phase 1 preview, Phase 2 registration (MCP only)
+Install:
+- Agent Fabric plugin: `npm i mulesoft-anypoint-cli-agent-fabric-plugin` (renamed from `anypoint-cli-agent-fabric-plugin` — use `--force` if hitting an EXIST conflict).
+- General CLI v4: `npm install -g anypoint-cli-v4`.
 
-No CLI equivalent. When MCP is present:
+### Exchange search — Phase 1 preview, Phase 2 registration
 
-- **At least one of:** `searchQuery` or `maxResults`.
-- Optional: `assetFilters` (`["llm"]`, `["mcp"]`, `["agent"]`), `statuses`, `organizationId`, `sharedWithMe`, `sortCriteria`, `ascending`, `exchangeScope` (Private / Public).
+**CLI (preferred):** `anypoint-cli-v4 exchange asset search --search "<query>" [--type <type>] [--organization <orgId>]`
 
-**Always include `assetFilters`** to narrow results. Search **Private Exchange first**; only fall back to Public if Private has no match. Confirm before pulling Public.
+- General CLI v4 type filters: `connector` | `rest-api` | `soap-api` | `template` | `example` | `custom` | `raml-fragment`. Agent-Fabric–specific types (LLM/MCP/Agent) aren't first-class here yet, so search broadly and filter the result list by name/description.
+- Useful follow-ups: `anypoint-cli-v4 exchange asset describe <groupId>/<assetId>/<version>` to confirm details before registering.
+- **Always pass `--organization <orgId>`** to scope to Private Exchange first. If no Private match, drop the flag (or pass the public org) — confirm with user before pulling Public.
+
+**MCP fallback:** `search_asset` with `assetFilters: ["llm"]`, `["mcp"]`, `["agent"]`.
+
+- At least one of `searchQuery` or `maxResults`.
+- Optional: `statuses`, `organizationId`, `sharedWithMe`, `sortCriteria`, `ascending`, `exchangeScope` (Private / Public).
+- Always include `assetFilters` — searching without narrows nothing.
 
 If search returns no results, **don't invent the asset**. Tell the user: *"I didn't find a matching asset in Exchange. Want to provide a custom configuration, or skip?"*
 
@@ -453,9 +466,9 @@ After deploy, surface URL/ID.
 
 ### Graceful degradation (neither CLI nor MCP)
 
-The skill works in Cursor, standalone Claude Code, Codex — anywhere without MuleSoft tooling.
+The skill works in Cursor, standalone Claude Code, Codex — anywhere without MuleSoft tooling. When neither CLI nor MCP is available:
 
-- **Phase 1/2 — search:** Ask the user directly. For Exchange-mode assets, get `groupId`/`assetId`/`version` and (for MCPs) transport kind + tool names. For unknown assets, register an inline placeholder per Case C.
+- **Phase 1/2 — search:** Ask the user directly. For Exchange-mode assets, get `groupId`/`assetId`/`version` and (for MCPs) transport kind + tool names. For unknown assets, register an inline placeholder per Case C. Tell the user: *"To search Exchange directly, install `anypoint-cli-v4` (`npm i -g anypoint-cli-v4`)."*
 - **Step 6 — validation:** Run the structural checklist. Tell the user: *"To run MuleSoft's full schema validator, install the CLI plugin (`npm i mulesoft-anypoint-cli-agent-fabric-plugin`) or use the MuleSoft MCP server in your IDE. CI/CD reference: <https://docs.mulesoft.com/anypoint-code-builder/af-build-agent-networks-in-a-ci-cd-environment>."*
 - **Step 7 — publish:** Point at <https://docs.mulesoft.com/anypoint-code-builder/af-publish-agent-network-assets>.
 - **Step 8 — deploy:** Point at <https://docs.mulesoft.com/anypoint-code-builder/af-deploy-agent-network-targets>.

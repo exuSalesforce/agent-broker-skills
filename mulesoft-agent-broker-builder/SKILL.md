@@ -11,7 +11,7 @@ metadata:
 
 Turns a natural-language description of a multi-agent workflow into a complete, validated, deployable Agent Network V2 project. Runs the Beta Guide's 6-phase guided experience and adds publish + deploy.
 
-For validate/publish/deploy, the skill prefers the **Anypoint CLI Agent Fabric plugin** (`mulesoft-anypoint-cli-agent-fabric-plugin`) — it's portable across Claude Code, Cursor, Codex, and Vibes, and is the same path CI/CD uses. Falls back to MCP tools (`validate_project`, `publish_agent_network_assets`, `deploy_agent_network`) when only the MuleSoft MCP server is present. Falls back to doc links when neither is available. `search_asset` is MCP-only (no CLI equivalent).
+**The skill is CLI-first end-to-end.** Validate/publish/deploy use the **Anypoint CLI Agent Fabric plugin** (`mulesoft-anypoint-cli-agent-fabric-plugin`). Exchange asset search uses **Anypoint CLI v4** (`anypoint-cli-v4 exchange asset search`). Both are portable across Claude Code, Cursor, Codex, and Vibes, and match the CI/CD path. MCP tools (`mcp__mulesoft__*`) work as a fallback when present, but no MCP dependency is required.
 
 ## When to use
 
@@ -33,13 +33,13 @@ The Beta Guide is the authoritative V2 syntax reference. When it goes public, th
 |---|---|---|---|---|
 | Scaffold project | 0 | Skill writes scaffold directly (CLI's `agent-network:project:create` overwrites our canonical structure). | `create_agent_network_project` — skip. | — |
 | Configure YAML | 0–5 | Skill IS the guided experience. | `configure_agent_network_yaml` — skip (returns prompt template that duplicates skill). | — |
-| Search Exchange | 1, 2 | *(no CLI equivalent)* | `search_asset` — call when present. | Ask user for `groupId`/`assetId`/`version`. |
+| Search Exchange | 1, 2 | `anypoint-cli-v4 exchange asset search --search "<query>" --type <type>` | `search_asset` — call when present. | Ask user for `groupId`/`assetId`/`version`. |
 | Validate / build | 6 | `agent-network:project:build` — runs Maven validation, generates artifacts. | `validate_project` — call when present. | Structural checklist + doc link. |
 | Publish to Exchange | 7 | `agent-network:project:publish` | `publish_agent_network_assets` | Doc link. |
 | Deploy to runtime | 8 | `agent-network:project:deploy` | `deploy_agent_network` | Doc link. |
 | Set up gateways | one-time | `agent-network:setup:gateways` | *(no MCP equivalent)* | Doc link. |
 
-**Detection order** at each step: (1) check CLI is installed via `command -v anypoint-cli-agent-fabric-plugin`. (2) if absent, check MCP tools (prefix `mcp__mulesoft__`). (3) else fall back.
+**Detection order** at each step: (1) check the relevant CLI is installed (`command -v anypoint-cli-agent-fabric-plugin` for build/publish/deploy/gateways; `command -v anypoint-cli-v4` for search). (2) if absent, check MCP tools (prefix `mcp__mulesoft__`). (3) else fall back.
 
 **CLI auth** is environment-based: `ANYPOINT_CLIENT_ID`, `ANYPOINT_CLIENT_SECRET`, `ANYPOINT_ORG`, `ANYPOINT_ENV`, optional `ANYPOINT_HOST`. Never paste credentials inline. If env vars are unset, point user at <https://docs.mulesoft.com/anypoint-cli/latest/auth>.
 
@@ -78,7 +78,12 @@ After confirmation, **identify required assets**:
 
 Present: *"Based on requirements, I've identified these asset needs: [list]. Confirm or adjust?"* Stop.
 
-If `search_asset` is available, **preview Exchange assets** for each capability with `assetFilters: ["llm"]`, `["mcp"]`, `["agent"]`. Group results: *"Found in Exchange: [...]. Not found: [...]."* Save preview for Phase 2. Preview only — no file writes yet.
+**Preview Exchange assets** for each capability. CLI-first:
+- If `anypoint-cli-v4` is installed: run `anypoint-cli-v4 exchange asset search --search "<keywords>"` per capability and inspect results by name/description. The general CLI v4 `--type` flag accepts `connector`, `rest-api`, `soap-api`, `template`, `example`, `custom`, `raml-fragment` — but Agent Fabric–specific types (LLM/MCP/Agent) aren't first-class there yet, so search broadly and filter by asset name. **Always scope to the user's org** with `--organization <orgId>` to hit Private Exchange first; only widen to Public if no match.
+- Else if MCP `search_asset` is available: call with `assetFilters: ["llm"]`, `["mcp"]`, `["agent"]` per capability — these *are* first-class in MCP-tool taxonomy.
+- Else: ask the user for known `groupId`/`assetId`/`version` per asset; treat unknowns as inline placeholders.
+
+Group results: *"Found in Exchange: [...]. Not found: [...]."* Save preview for Phase 2. Preview only — no file writes yet.
 
 ## Step 2: Asset Registration (Beta Guide Phase 2)
 
