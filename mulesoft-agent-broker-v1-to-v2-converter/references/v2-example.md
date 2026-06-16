@@ -1,6 +1,6 @@
-# V2 Example: customer-onboarding-v2
+# V2 Example: customer-onboarding-v2 (GA)
 
-This is the canonical V2 output for the V1 input shown in `v1-example.md`. Mirror this style and structure when generating V2 projects.
+This is the canonical V2 (GA, A2A v1.0) output for the V1 input shown in `v1-example.md`. Mirror this style and structure when generating V2 projects.
 
 ## Folder structure
 
@@ -35,210 +35,198 @@ registry:
         label: Workday Agent
         description: Creates the new-hire / customer record in Workday.
       metadata:
-        protocol: a2a
         platform: Workday
-        card:
+        interfaces:
           a2a:
-            protocolVersion: 0.3.0
-            name: Workday Agent
-            description: Creates the new-hire / customer record in Workday.
-            url: ${ingressgw.url}/workdayAgent
-            version: 1.0.0
-            capabilities:
-              pushNotifications: false
-            defaultInputModes:
-              - application/json
-              - text/plain
-            defaultOutputModes:
-              - application/json
-              - text/plain
-            skills:
-              - id: workday-create-record
-                name: Create Workday Record
-                description: Creates the new-hire / customer record in Workday.
-                tags:
-                  - workday
-                  - onboarding
-                inputModes:
-                  - application/json
-                  - text/plain
-                outputModes:
-                  - application/json
-                  - text/plain
+            card:
+              name: Workday Agent
+              description: Creates the new-hire / customer record in Workday.
+              version: 1.0.0
+              capabilities:
+                pushNotifications: false
+              defaultInputModes:
+                - application/json
+                - text/plain
+              defaultOutputModes:
+                - application/json
+                - text/plain
+              skills:
+                - id: workday-create-record
+                  name: Create Workday Record
+                  description: Creates the new-hire / customer record in Workday.
+                  tags:
+                    - workday
+                    - onboarding
+                  inputModes:
+                    - application/json
+                    - text/plain
+                  outputModes:
+                    - application/json
+                    - text/plain
     salesforceAgent:
       info:
         label: Salesforce Agent
         description: Creates the customer's CRM profile in Salesforce.
       metadata:
-        protocol: a2a
         platform: Salesforce
-        card:
+        interfaces:
           a2a:
-            protocolVersion: 0.3.0
-            name: Salesforce Agent
-            description: Creates the customer's CRM profile in Salesforce.
-            url: ${ingressgw.url}/salesforceAgent
-            version: 1.0.0
-            capabilities:
-              pushNotifications: false
-            defaultInputModes:
-              - application/json
-              - text/plain
-            defaultOutputModes:
-              - application/json
-              - text/plain
-            skills:
-              - id: salesforce-create-profile
-                name: Create Salesforce CRM Profile
-                description: Creates the customer's CRM profile in Salesforce.
-                tags:
-                  - salesforce
-                  - crm
-                inputModes:
-                  - application/json
-                  - text/plain
-                outputModes:
-                  - application/json
-                  - text/plain
+            card:
+              name: Salesforce Agent
+              description: Creates the customer's CRM profile in Salesforce.
+              version: 1.0.0
+              capabilities:
+                pushNotifications: false
+              defaultInputModes:
+                - application/json
+                - text/plain
+              defaultOutputModes:
+                - application/json
+                - text/plain
+              skills:
+                - id: salesforce-create-profile
+                  name: Create Salesforce CRM Profile
+                  description: Creates the customer's CRM profile in Salesforce.
+                  tags:
+                    - salesforce
+                    - crm
+                  inputModes:
+                    - application/json
+                    - text/plain
+                  outputModes:
+                    - application/json
+                    - text/plain
     zendeskAgent:
       info:
         label: Zendesk Agent
         description: Submits laptop and IT requests in Zendesk.
       metadata:
-        protocol: a2a
         platform: Zendesk
-        card:
+        interfaces:
           a2a:
-            protocolVersion: 0.3.0
-            name: Zendesk Agent
-            description: Submits laptop and IT requests in Zendesk.
-            url: ${ingressgw.url}/zendeskAgent
-            version: 1.0.0
-            capabilities:
-              pushNotifications: false
-            defaultInputModes:
-              - application/json
-              - text/plain
-            defaultOutputModes:
-              - application/json
-              - text/plain
-            skills:
-              - id: zendesk-laptop-request
-                name: Zendesk Laptop Request
-                description: Submits a laptop request ticket in Zendesk.
-                tags:
-                  - zendesk
-                  - laptop
-                inputModes:
-                  - application/json
-                  - text/plain
-                outputModes:
-                  - application/json
-                  - text/plain
+            card:
+              name: Zendesk Agent
+              description: Submits laptop and IT requests in Zendesk.
+              version: 1.0.0
+              capabilities:
+                pushNotifications: false
+              defaultInputModes:
+                - application/json
+                - text/plain
+              defaultOutputModes:
+                - application/json
+                - text/plain
+              skills:
+                - id: zendesk-laptop-request
+                  name: Zendesk Laptop Request
+                  description: Submits a laptop request ticket in Zendesk.
+                  tags:
+                    - zendesk
+                    - laptop
+                  inputModes:
+                    - application/json
+                    - text/plain
+                  outputModes:
+                    - application/json
+                    - text/plain
     badgingAgent:
       info:
         label: Badging Agent
         description: Initiates the customer badge request.
       metadata:
-        protocol: a2a
         platform: Badging
-        card:
+        interfaces:
           a2a:
-            protocolVersion: 0.3.0
-            name: Badging Agent
-            description: Initiates the customer badge request.
-            url: ${ingressgw.url}/badgingAgent
-            version: 1.0.0
-            capabilities:
-              pushNotifications: false
-            defaultInputModes:
-              - application/json
-              - text/plain
-            defaultOutputModes:
-              - application/json
-              - text/plain
-            skills:
-              - id: badge-request
-                name: Badge Request
-                description: Initiates a customer badge request.
-                tags:
-                  - badging
-                inputModes:
-                  - application/json
-                  - text/plain
-                outputModes:
-                  - application/json
-                  - text/plain
+            card:
+              name: Badging Agent
+              description: Initiates the customer badge request.
+              version: 1.0.0
+              capabilities:
+                pushNotifications: false
+              defaultInputModes:
+                - application/json
+                - text/plain
+              defaultOutputModes:
+                - application/json
+                - text/plain
+              skills:
+                - id: badge-request
+                  name: Badge Request
+                  description: Initiates a customer badge request.
+                  tags:
+                    - badging
+                  inputModes:
+                    - application/json
+                    - text/plain
+                  outputModes:
+                    - application/json
+                    - text/plain
     itAgent:
       info:
         label: IT Agent
         description: Provisions the PingID system for the customer.
       metadata:
-        protocol: a2a
         platform: IT
-        card:
+        interfaces:
           a2a:
-            protocolVersion: 0.3.0
-            name: IT Agent
-            description: Provisions PingID and IT system access for the customer.
-            url: ${ingressgw.url}/itAgent
-            version: 1.0.0
-            capabilities:
-              pushNotifications: false
-            defaultInputModes:
-              - application/json
-              - text/plain
-            defaultOutputModes:
-              - application/json
-              - text/plain
-            skills:
-              - id: it-pingid-provision
-                name: PingID Provisioning
-                description: Provisions the PingID system for the customer.
-                tags:
-                  - it
-                  - pingid
-                inputModes:
-                  - application/json
-                  - text/plain
-                outputModes:
-                  - application/json
-                  - text/plain
+            card:
+              name: IT Agent
+              description: Provisions PingID and IT system access for the customer.
+              version: 1.0.0
+              capabilities:
+                pushNotifications: false
+              defaultInputModes:
+                - application/json
+                - text/plain
+              defaultOutputModes:
+                - application/json
+                - text/plain
+              skills:
+                - id: it-pingid-provision
+                  name: PingID Provisioning
+                  description: Provisions the PingID system for the customer.
+                  tags:
+                    - it
+                    - pingid
+                  inputModes:
+                    - application/json
+                    - text/plain
+                  outputModes:
+                    - application/json
+                    - text/plain
     licenseProcurementAgent:
       info:
         label: License Procurement Agent
         description: Procures software licenses for the new customer.
       metadata:
-        protocol: a2a
         platform: License
-        card:
+        interfaces:
           a2a:
-            protocolVersion: 0.3.0
-            name: License Procurement Agent
-            description: Procures software licenses for the new customer.
-            url: ${ingressgw.url}/licenseProcurementAgent
-            version: 1.0.0
-            capabilities:
-              pushNotifications: false
-            defaultInputModes:
-              - application/json
-              - text/plain
-            defaultOutputModes:
-              - application/json
-              - text/plain
-            skills:
-              - id: license-procure
-                name: License Procurement
-                description: Procures software licenses for the new customer.
-                tags:
-                  - licensing
-                  - procurement
-                inputModes:
-                  - application/json
-                  - text/plain
-                outputModes:
-                  - application/json
-                  - text/plain
+            card:
+              name: License Procurement Agent
+              description: Procures software licenses for the new customer.
+              version: 1.0.0
+              capabilities:
+                pushNotifications: false
+              defaultInputModes:
+                - application/json
+                - text/plain
+              defaultOutputModes:
+                - application/json
+                - text/plain
+              skills:
+                - id: license-procure
+                  name: License Procurement
+                  description: Procures software licenses for the new customer.
+                  tags:
+                    - licensing
+                    - procurement
+                  inputModes:
+                    - application/json
+                    - text/plain
+                  outputModes:
+                    - application/json
+                    - text/plain
   mcps:
     talentPoolMcp:
       info:
@@ -248,14 +236,6 @@ registry:
         transport:
           kind: streamableHttp
           path: /mcp
-        tools:
-          - name: TalentPoolMcpServer.match_email_to_address
-            description: Match a customer email to their physical address.
-            inputSchema:
-              type: object
-              properties:
-                email:
-                  type: string
     slackMcp:
       info:
         label: Customer Slack MCP Server
@@ -264,16 +244,6 @@ registry:
         transport:
           kind: streamableHttp
           path: /mcp
-        tools:
-          - name: SlackMcpServer.send_status_update
-            description: Post a human-readable status update to Slack.
-            inputSchema:
-              type: object
-              properties:
-                message:
-                  type: string
-                contextId:
-                  type: string
   llms:
     gemini:
       info:
@@ -281,9 +251,6 @@ registry:
         description: Google Gemini provider for orchestration and generation.
       metadata:
         platform: Gemini
-        models:
-          - gemini-3-flash-preview
-          - gemini-2.5-flash
 
 context:
   connections:
@@ -345,9 +312,7 @@ brokers:
         card:
           name: Customer Onboarding Assistant
           description: Coordinates customer onboarding across Workday, Salesforce, Zendesk, Badging, License Procurement, and IT systems using Gemini.
-          url: ${ingressgw.url}/customer-onboarding
           version: 1.0.0
-          protocolVersion: 0.3.0
           capabilities:
             streaming: false
             pushNotifications: true
@@ -462,7 +427,7 @@ brokers:
 ## brokers/customer-onboarding.agent
 
 ```text
-# @dialect: AGENTFABRIC=0.1-BETA
+# @dialect: AGENTFABRIC=0
 
 system:
   instructions: "You are the Customer Onboarding Orchestrator. You coordinate onboarding of a new customer across Workday, Salesforce, Zendesk, Badging, License Procurement, and IT systems."
@@ -480,7 +445,7 @@ llm:
   gemini_flash:
     target: "llm://geminiConnection"
     kind: "Gemini"
-    model: "gemini-3-flash-preview"
+    model: "gemini-2.5-flash"
 
 
 # -- ACTION DEFINITIONS -------------------------------------------------------
@@ -589,16 +554,13 @@ orchestrator onboardCustomer:
 # -- RESPONSE -----------------------------------------------------------------
 
 echo onboardingResponse:
-  kind: "a2a:response"
-  task: a2a.task({
-    state: "completed",
-    message: a2a.message({
-      messageId: uuid(),
-      parts: [
-        a2a.textPart(@orchestrator.onboardCustomer.output.summary)
-      ]
-    }),
-    metadata: None
+  kind: "a2a:status_update_event"
+  state: "TASK_STATE_COMPLETED"
+  message: a2a.message({
+    messageId: uuid(),
+    parts: [
+      a2a.textPart(@orchestrator.onboardCustomer.output.summary)
+    ]
   })
 ```
 
@@ -609,10 +571,13 @@ These are the specific decisions reflected in the V2 example, encoded so the con
 1. **Identifier renaming**: V1's PascalCase agent ids (`WorkdayAgentTest`) became camelCase (`workdayAgent`). The `Test` suffix was dropped because the V2 example treats this as the canonical project.
 2. **Connection rename**: V1 `WorkdayAgentTestConnection` → V2 `workdayAgentConnection`. Connection refs match their underlying registry id.
 3. **`kind: agent` → `kind: a2a`**: V1's `agent` connection kind is V2's `a2a`.
-4. **URLs parameterized**: every external URL becomes `${<refName>.url}` in YAML and lives in `exchange.json` `metadata.variables`.
-5. **Auth on connections**: the Gemini API key auth that V1 stuffed in `spec.configuration.apiKey` is now `context.connections.geminiConnection.authentication.{kind: apiKey, apiKey: ${gemini.apiKey}}`.
-6. **Broker id**: `CustomerOnboardingBrokerTest` → `customer-onboarding` (kebab-case, used as both the broker id and the `.agent` filename stem).
-7. **MCP tool actions**: each tool listed in V1 `brokers.tools[*].mcp.allowed` got its own action in the `.agent` file. Action ids are descriptive (`match_email_to_address`, `send_slack_status_update`) but the `tool_name` is preserved exactly. **No `inputs:` block** — V1 doesn't declare tool input schemas, and the V2 runtime auto-discovers arguments from the MCP server.
-8. **Reasoning action aliases**: inside `orchestrator.reasoning.actions`, short readable aliases (e.g. `workday`, `slack_update`) point at the longer action ids.
-9. **Prompt preservation**: the V1 `spec.instructions` were copied into the orchestrator's `system.instructions` with only minor cleanup (e.g. fixing "this a long running task" → "this is a long running task", and replacing the dotted MCP tool name with the new alias). Bullets and ordering were preserved.
-10. **One orchestrator only**: even though V1's prompt has multiple steps, the V2 conversion keeps everything in a single `orchestrator` node. No router/executor/generator was introduced.
+4. **Registry agent shape (GA / A2A v1.0)**: each agent uses `metadata.interfaces.a2a.card`. The card has NO `protocolVersion` and NO `url` — the URL lives on the connection. The old `metadata.protocol: a2a` + flat `metadata.card.a2a` shape is removed.
+5. **URLs parameterized**: every external URL becomes `${<refName>.url}` in YAML and lives in `exchange.json` `metadata.variables`.
+6. **Auth on connections**: the Gemini API key auth that V1 stuffed in `spec.configuration.apiKey` is now `context.connections.geminiConnection.authentication.{kind: apiKey, apiKey: ${gemini.apiKey}}`. Authentication is required on `kind: llm` connections in GA.
+7. **Broker id**: `CustomerOnboardingBrokerTest` → `customer-onboarding` (kebab-case, used as both the broker id and the `.agent` filename stem).
+8. **MCP tool actions**: each tool listed in V1 `brokers.tools[*].mcp.allowed` got its own action in the `.agent` file. Action ids are descriptive (`match_email_to_address`, `send_slack_status_update`) but the `tool_name` is preserved exactly. **No `inputs:` block** — V1 doesn't declare tool input schemas, and the V2 runtime auto-discovers arguments from the MCP server.
+9. **Reasoning action aliases**: inside `orchestrator.reasoning.actions`, short readable aliases (e.g. `workday`, `slack_update`) point at the longer action ids.
+10. **Prompt preservation**: the V1 `spec.instructions` were copied into the orchestrator's `system.instructions` with only minor cleanup (e.g. fixing "this a long running task" → "this is a long running task", and replacing the dotted MCP tool name with the new alias). Bullets and ordering were preserved.
+11. **One orchestrator only**: even though V1's prompt has multiple steps, the V2 conversion keeps everything in a single `orchestrator` node. No router/executor/generator was introduced.
+12. **Echo node (GA)**: response uses `kind: "a2a:status_update_event"` with `state: "TASK_STATE_COMPLETED"` and a `message` built via `a2a.message(...)`. The Beta-era `kind: "a2a:response"` wrapping `task: a2a.task({...})` is gone.
+13. **Dialect line**: `# @dialect: AGENTFABRIC=0` pins to the GA dialect major.

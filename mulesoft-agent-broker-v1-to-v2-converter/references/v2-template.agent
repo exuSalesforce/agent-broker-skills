@@ -1,4 +1,4 @@
-# @dialect: AGENTFABRIC=0.1-BETA
+# @dialect: AGENTFABRIC=0
 
 system:
   instructions: "<one-line summary of the broker's role, derived from V1 broker description>"
@@ -63,14 +63,11 @@ orchestrator <orchestratorId>:
 
 # -- RESPONSE -----------------------------------------------------------------
 echo <responseEchoId>:
-  kind: "a2a:response"
-  task: a2a.task({
-    state: "completed",
-    message: a2a.message({
-      messageId: uuid(),
-      parts: [
-        a2a.textPart(@orchestrator.<orchestratorId>.output.summary)
-      ]
-    }),
-    metadata: None
+  kind: "a2a:status_update_event"
+  state: "TASK_STATE_COMPLETED"
+  message: a2a.message({
+    messageId: uuid(),
+    parts: [
+      a2a.textPart(@orchestrator.<orchestratorId>.output.summary)
+    ]
   })

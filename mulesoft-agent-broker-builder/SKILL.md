@@ -9,7 +9,7 @@ metadata:
 
 # MuleSoft Agent Broker Builder
 
-Turns a natural-language description of a multi-agent workflow into a complete, validated, deployable Agent Network V2 project. Runs the Beta Guide's 6-phase guided experience and adds publish + deploy.
+Turns a natural-language description of a multi-agent workflow into a complete, validated, deployable Agent Network V2 (GA, A2A v1.0) project. Runs a 6-phase guided experience and adds publish + deploy.
 
 **The skill is CLI-first end-to-end.** Validate/publish/deploy use the **Anypoint CLI Agent Fabric plugin** (`mulesoft-anypoint-cli-agent-fabric-plugin`). Exchange asset search uses **Anypoint CLI v4** (`anypoint-cli-v4 exchange asset search`). Both are portable across Claude Code, Cursor, Codex, and Vibes, and match the CI/CD path. MCP tools (`mcp__mulesoft__*`) work as a fallback when present, but no MCP dependency is required.
 
@@ -22,10 +22,10 @@ If the YAML has `schemaVersion: 1.0.0`, this is V1 — stop and route to the con
 
 ## References (read on demand)
 
-- **`references/canonical-example.md`** — The complete IT Help Network V2 project, sourced verbatim from `mulesoft-emu/agent-fabric-specification`. The structural template — when in doubt, copy it.
-- **`references/gotchas.md`** — V2 syntax rules, compile-error rules, RULE-ASSET-MODE (inline vs Exchange), subagent-vs-orchestrator decision, auth casing, CLI + MCP tooling integration, graceful degradation.
+- **`references/canonical-example.md`** — The complete IT Help Investigation GA project, sourced from the working GA example in `mulesoft-emu/agent-fabric-specification`. The structural template — when in doubt, copy it.
+- **`references/gotchas.md`** — GA syntax rules, compile-error rules, RULE-ASSET-MODE (inline vs Exchange), subagent-vs-orchestrator decision, auth casing, CLI + MCP tooling integration, graceful degradation.
 
-The Beta Guide is the authoritative V2 syntax reference. When it goes public, this skill will link to it. Until then, the references above cover the gotchas and worked example.
+The MuleSoft Agent Network GA docs (Anypoint Code Builder section) are the authoritative reference. The references above cover the gotchas and worked example.
 
 ## Tooling integration (CLI-first, MCP-fallback)
 
@@ -49,7 +49,7 @@ See `references/gotchas.md` § "Tooling integration" for full command syntax, en
 
 ## Workflow A — Build a new project (Phases 1–6 + Publish/Deploy)
 
-The 6 phases below mirror the Beta Guide Appendix exactly. Each phase ends with a stop point — wait for the user. Apply each user response immediately (no batch-then-update).
+The 6 phases below structure the build experience. Each phase ends with a stop point — wait for the user. Apply each user response immediately (no batch-then-update).
 
 ## Step 0: Pre-flight
 
@@ -58,7 +58,7 @@ The 6 phases below mirror the Beta Guide Appendix exactly. Each phase ends with 
 3. **Confirm intent in one sentence:** *"You want me to build a new Agent Broker that does X. Sound right?"*
 4. **Capture network `info`** for `agent-network.yaml`: ask for `info.label` (required) and `info.description` (optional). Default `info.version` to `1.0.0` unless user provides one.
 
-## Step 1: Functional Requirements (Beta Guide Phase 1 — be strict)
+## Step 1: Functional Requirements (Phase 1 — be strict)
 
 Make the user articulate what the broker *does* unambiguously. Do not proceed until requirements are concrete.
 
@@ -85,7 +85,7 @@ Present: *"Based on requirements, I've identified these asset needs: [list]. Con
 
 Group results: *"Found in Exchange: [...]. Not found: [...]."* Save preview for Phase 2. Preview only — no file writes yet.
 
-## Step 2: Asset Registration (Beta Guide Phase 2)
+## Step 2: Asset Registration (Phase 2)
 
 Register every required asset in `agent-network.yaml` and `exchange.json`. Sub-steps run sequentially. After each individual asset, ask "Add another?" before continuing.
 
@@ -107,9 +107,9 @@ After registering: ask the user **what `tool_name`** they intend to call (requir
 
 ### 2c — A2A agent(s) (conditional)
 
-Inline schema requires `info.label`, `metadata.protocol: a2a`, `metadata.card.a2a` (full A2A Agent Card with skills). Ask "Add another?"
+Inline schema requires `info.label` and `metadata.interfaces.a2a.card` — a full A2A v1.0 Agent Card with `name`, `description`, `version`, `capabilities`, `defaultInputModes`, `defaultOutputModes`, `skills`. Note: GA cards do NOT include `protocolVersion` or `url` — URL lives on the connection. For agents still on legacy A2A v0.3, use `metadata.interfaces.a2a_v03.card` instead. Ask "Add another?"
 
-## Step 3: Define the Broker (Beta Guide Phase 3 — Agent Script)
+## Step 3: Define the Broker (Phase 3 — Agent Script)
 
 Write the structural skeleton of the `.agent` file. **Brief drafts** of `system.instructions` and `prompt`/`reasoning.instructions` only — Phase 5 refines prose.
 
@@ -123,19 +123,19 @@ Decisions:
    - Open-ended judgment, NO actions, NO HITL? → `generator`.
    - Open-ended judgment with actions OR HITL? → `subagent` (default LLM-powered type).
    - Coordinating MULTIPLE actions toward a compound goal? → `orchestrator`.
-   - Final response to A2A client? → `echo` with `kind: "a2a:response"`.
+   - Final response to A2A client? → `echo` with `kind: "a2a:status_update_event"` (or `"a2a:artifact_update_event"` for artifacts).
 4. **`subagent` is the default.** Use `orchestrator` ONLY for compound multi-action coordination. Single-action (even with A2A) → `subagent`.
 5. **HITL is built into `subagent`.** When a subagent needs user input, the runtime auto-sends `input-required`. Do NOT model clarification as `subagent → router → executor → echo` — anti-pattern.
 6. **Hard constraints from Phase 1 → router nodes, not prompts.** The constrained action goes in an `executor` gated by a `router`. Prompts can be ignored, router conditions cannot.
 7. **First node after trigger should NOT be a pass-through executor** that copies `@request.payload.message`. Reference `@request.payload.message.parts[0].text` directly downstream.
 8. **Edges.** Every non-terminal node has `on_exit: -> transition to @<nodeType>.<nodeId>`. Routers declare `routes:` + `otherwise:` and have NO `on_exit` (`transition to` inside router `on_exit` is a compile error).
-9. **Echo terminus.** Every reachable path ends in `echo`. `a2a.task(...)`, `a2a.message(...)`, `a2a.textPart(...)` are functions, NOT references — don't prefix with `@`. `state` must be: `submitted | working | input-required | completed | failed | canceled | rejected`.
+9. **Echo terminus.** Every reachable path ends in `echo`. `a2a.message(...)`, `a2a.artifact(...)`, `a2a.textPart(...)`, `a2a.dataPart(...)`, `a2a.filePart(...)` and `uuid()` are functions, NOT references — don't prefix with `@`. `state` (on `a2a:status_update_event`) must be: `TASK_STATE_SUBMITTED | TASK_STATE_WORKING | TASK_STATE_INPUT_REQUIRED | TASK_STATE_COMPLETED | TASK_STATE_FAILED | TASK_STATE_CANCELED | TASK_STATE_REJECTED`.
 
 For full compile-error rules see `references/gotchas.md` § "Compile-error rules". For the structural template see `references/canonical-example.md`.
 
 Update the `brokers` entry in `agent-network.yaml` to reference the new `.agent` file.
 
-## Step 4: Asset Assignment to Graph (Beta Guide Phase 4)
+## Step 4: Asset Assignment to Graph (Phase 4)
 
 Bind actions to nodes, respecting least-privilege.
 
@@ -155,7 +155,7 @@ Bind actions to nodes, respecting least-privilege.
 
 **Least-privilege (CR-18 nuance).** Irreversible/high-stakes mutations (escalate, delete, send-to-customer) MUST be in `executor` nodes gated by `router`. Idempotent updates (status updates, ticket notes) MAY live on a `subagent`/`orchestrator`. The line: irreversible (executor-only, router-gated) vs idempotent/domain-natural (orchestrator OK).
 
-## Step 5: Instruction Refinement (Beta Guide Phase 5)
+## Step 5: Instruction Refinement (Phase 5)
 
 Make every LLM-powered node's prompt precise, testable, non-conflicting. **One node at a time, never batch.**
 
@@ -172,7 +172,7 @@ For each `generator`/`subagent`/`orchestrator`:
 
 After all nodes refined: **cross-node contradiction test** — does any prompt conflict with another? Resolve with user.
 
-## Step 6: Final Topology Review (Beta Guide Phase 6)
+## Step 6: Final Topology Review (Phase 6)
 
 Cleanup, then validate.
 
@@ -271,7 +271,7 @@ Edit `.agent` only. Apply Phase 5 contradiction tests. If user pastes a policy d
 
 ### B.4 — Add or change a connection policy
 
-Edit `agent-network.yaml`. V2 supports policies even though the configure-instructions template doesn't surface them in build flow.
+Edit `agent-network.yaml`. The GA schema supports policies even though the build flow doesn't surface them.
 
 A policy has **two parts**:
 1. **Definition** — `context.policies.<policyId>`.

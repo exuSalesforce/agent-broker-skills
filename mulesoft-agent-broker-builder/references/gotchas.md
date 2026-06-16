@@ -1,6 +1,8 @@
-# V2 Gotchas, Compile-Error Rules, Asset Modes, Tooling Integration
+# GA Gotchas, Compile-Error Rules, Asset Modes, Tooling Integration
 
-This file consolidates everything the Beta Guide doesn't make obvious — the rules that bite during build/edit. When in doubt about a field name or shape, mirror `canonical-example.md`.
+This file consolidates everything the published docs don't make obvious — the rules that bite during build/edit. When in doubt about a field name or shape, mirror `canonical-example.md`.
+
+GA uses **A2A v1.0**. Earlier A2A v0.3 patterns (e.g. `protocolVersion: 0.3.0` on the card, `metadata.protocol` + `metadata.card` on registry agents, `kind: "a2a:response"` echo with nested `task: a2a.task({...})`) no longer apply.
 
 ## Project file layout
 
@@ -16,20 +18,52 @@ For multi-broker projects: one `.agent` per broker, each referenced from its own
 
 ## Top-level YAML markers
 
-- `agentNetwork: 2.0.0` — unquoted (per Beta Guide). (V1 used `schemaVersion: 1.0.0`.)
-- `exchange.json` `"classifier": "agentic-network"` — V2. (V1 used `agent-network`.)
+- `agentNetwork: 2.0.0` — unquoted. (V1 used `schemaVersion: 1.0.0`.)
+- `exchange.json` `"classifier": "agentic-network"`. (V1 used `agent-network`.)
 - `info.version` accepts non-semver strings (`v1` works in canonical).
-- `policies` are part of V2 schema even though the MCP server's configure-instructions template (PR 1564) does not surface them in initial build. Use Workflow B.4 to add later.
+- `policies` are part of the GA schema even though the build flow doesn't surface them. Use Workflow B.4 to add later. **Shape changed in GA**: `policies` is an object with `inbound` and `outbound` arrays, not a flat list.
+
+## Registry agents — A2A v1.0 shape
+
+GA places the agent card under `metadata.interfaces.<branch>.card` where `<branch>` is one of:
+
+- **`a2a`** — current A2A v1.0 card. Use this for almost every new agent.
+- **`a2a_v03`** — legacy A2A v0.3 card kept for back-compat with older agents that haven't migrated. Add only if the user explicitly asks.
+- **`other`** — non-A2A interfaces (custom HTTP, etc.).
+
+```yaml
+registry:
+  agents:
+    helpCenterAgent:
+      info:
+        label: Help Center Agent
+      metadata:
+        platform: Other
+        interfaces:
+          a2a:
+            card:
+              name: Help Center Agent
+              description: ...
+              version: 1.0.0
+              capabilities: { pushNotifications: false }
+              defaultInputModes: [application/json, text/plain]
+              defaultOutputModes: [application/json, text/plain]
+              skills: [...]
+```
+
+The old combination of `metadata.protocol: a2a` + flat `metadata.card.<branch>` is removed. Don't emit it.
+
+**A2A v1.0 card differences vs v0.3**: no `protocolVersion` field, no `url` field on the card itself. URLs live on `context.connections.<id>.url`.
 
 ## Agent Script `.agent` file
 
 ### Dialect line
 
 ```text
-# @dialect: AGENTFABRIC=0.1-BETA
+# @dialect: AGENTFABRIC=0
 ```
 
-`0.1-BETA` is what canonical uses today. The V2 sample template references `1.0-BETA` as forward-looking — match canonical until your runtime accepts the newer one.
+`AGENTFABRIC=0` pins to dialect major 0 for GA. Patch fixes (`AGENTFABRIC=0.1.2`) are invalid; semver major-or-major.minor only.
 
 ### `config:` block — minimal canonical form
 
@@ -117,12 +151,51 @@ Every action automatically accepts an optional `http_headers` parameter (an obje
 
 - **Trigger `on_message:`** must be a fixed `transition to`. Conditional routing inside `on_message:` is a compile error — use a `router` node.
 - **Router `on_exit:` with `transition to`** is a compile error. Routers transition exclusively via `routes` and `otherwise`.
-- **`a2a.task` / `a2a.message` / `a2a.textPart` / `uuid()`** are FUNCTIONS, not references — do NOT prefix with `@`.
+- **`a2a.message` / `a2a.artifact` / `a2a.textPart` / `a2a.dataPart` / `a2a.filePart` / `uuid()`** are FUNCTIONS, not references — do NOT prefix with `@`.
 
-## Echo `state` enum
+## Echo node — A2A v1.0 update events
 
-The `state` field in `a2a.task({state: ...})` MUST be exactly one of:
-`submitted`, `working`, `input-required`, `completed`, `failed`, `canceled`, `rejected`. Custom values are rejected.
+GA echo replaces the old `kind: "a2a:response"` (with nested `task: a2a.task({...})`) with **A2A v1.0 update events**. Two `kind` values:
+
+| Kind | Required parameters | Optional parameters |
+|---|---|---|
+| `a2a:status_update_event` | `state` (string), `message` (built via `a2a.message(...)`) | `metadata` (dict) |
+| `a2a:artifact_update_event` | `artifact` (built via `a2a.artifact(...)`) | `append` (bool), `lastChunk` (bool) |
+
+**Status update example (GA):**
+
+```text
+echo escalationResponse:
+  kind: "a2a:status_update_event"
+  state: "TASK_STATE_COMPLETED"
+  message: a2a.message({
+    messageId: uuid(),
+    parts: [
+      a2a.textPart("Ticket " + @generator.classifySeverity.output.ticket_id + " escalated.")
+    ]
+  })
+```
+
+**Artifact update example:**
+
+```text
+echo addArtifact:
+  kind: "a2a:artifact_update_event"
+  artifact: a2a.artifact({
+    artifactId: uuid(),
+    name: "myArtifact",
+    parts: [
+      a2a.textPart("Employee ID: " + @orchestrator.hrSystemOnboard.output.employeeId)
+    ]
+  })
+  append: false
+  lastChunk: false
+```
+
+**Echo `state` enum.** GA uses `TASK_STATE_*` constants (uppercase, prefixed). One of:
+`TASK_STATE_SUBMITTED`, `TASK_STATE_WORKING`, `TASK_STATE_INPUT_REQUIRED`, `TASK_STATE_COMPLETED`, `TASK_STATE_FAILED`, `TASK_STATE_CANCELED`, `TASK_STATE_REJECTED`. Custom values are rejected.
+
+**No `a2a.task(...)` wrapper.** GA echo doesn't wrap its payload in `a2a.task({...})`. Build status updates with `state: "..."` + `message: a2a.message(...)` directly. The runtime aggregates events into the canonical Task on the server side.
 
 ## Expression syntax — three forms
 
@@ -132,7 +205,7 @@ The `state` field in `a2a.task({state: ...})` MUST be exactly one of:
 | Direct `@reference` | Inside `+` concatenation, in `with` values, inside `a2a.*()` echo helpers | `"Ticket " + @generator.classify.output.ticket_id` |
 | Slot-fill `...` | `reasoning.actions` MCP `with` clauses ONLY | `with message = ...` |
 
-**Inside echo `a2a.task() / a2a.message() / a2a.textPart()`, references are direct.** `{!@...}` does NOT apply inside echo helpers.
+**Inside echo `a2a.message() / a2a.artifact() / a2a.textPart()`, references are direct.** `{!@...}` does NOT apply inside echo helpers.
 
 ## Subagent vs orchestrator — the decision
 
@@ -145,7 +218,7 @@ Does this node use any actions OR require human-in-the-loop?
             └─ NO  → subagent (default)
 ```
 
-Single-action node calling one A2A agent → **`subagent`**. NOT `orchestrator`. The Beta Guide's older guidance ("any A2A → orchestrator") is wrong for V2 — node type is determined by *coordination scope*, not protocol.
+Single-action node calling one A2A agent → **`subagent`**. NOT `orchestrator`. Node type is determined by *coordination scope*, not protocol.
 
 `subagent` and `orchestrator` MUST have ≥1 action OR HITL. Otherwise use `generator`.
 
@@ -174,22 +247,42 @@ orchestrator crossPlatformTriage:
 
 Wrong placement is a compile error.
 
-## Authentication kind casing
+## Connection rules (GA)
 
-Three V2 sources disagree slightly. **When in doubt, copy canonical.**
+- `url` is **optional** for all connection kinds (a2a, mcp, llm). Resolved at deploy time when omitted.
+- `authentication` is **required for `kind: llm`** connections, optional for `a2a` and `mcp`.
+- `policies` on a connection (when present) is an object with `inbound` and `outbound` arrays:
 
-| Auth kind | Canonical example | V2 MCP server template (PR 1564) | V2 Beta Guide |
-|---|---|---|---|
-| API key | `apiKey` | `api-key` | `apiKey` |
-| API key client credentials | (not used) | `api-key-client-credentials` | `apikey-client-credentials` |
-| OAuth2 client credentials | `oauth2-client-credentials` | `oauth2-client-credentials` | `oauth2-client-credentials` |
-| OAuth2 OBO | `oauth2-obo` | (not listed) | `oauth2-obo` |
-| Basic auth | (not used) | `basic` | `basic` |
-| In-task authorization code | (not used) | (not listed) | `in-task-authorization-code` |
+  ```yaml
+  context:
+    connections:
+      myConnection:
+        kind: a2a
+        ref: { name: myAgent }
+        url: ${myAgent.url}
+        policies:
+          inbound: []
+          outbound:
+            - ref: { name: rate-limit-policy }
+  ```
+  The old shape (flat array of policy ids) is removed.
 
-Default: `apiKey`, `oauth2-client-credentials`, `oauth2-obo`. For kinds canonical doesn't use, prefer Beta Guide casing.
+## Authentication kind casing (GA)
 
-`in-task-authorization-code` is documented in Beta Guide for OAuth2 step-up but not in canonical or MCP template. Don't emit unless explicitly requested.
+| Auth kind | Casing |
+|---|---|
+| API key | `apiKey` |
+| API key client credentials | `apikey-client-credentials` |
+| OAuth2 client credentials | `oauth2-client-credentials` |
+| OAuth2 OBO | `oauth2-obo` |
+| Basic auth | `basic` |
+| In-task authorization code | `in-task-authorization-code` |
+
+Default to `apiKey`, `oauth2-client-credentials`, `oauth2-obo`. `in-task-authorization-code` is for OAuth2 step-up — don't emit unless explicitly requested.
+
+GA additions:
+- **`distributed`** field on `oauth2-obo` and `in-task-authorization-code` blocks (boolean) — set when the auth flow spans services.
+- `in-task-authorization-code` accepts `subjectTokenType` and `requestedTokenType` (token-exchange semantics).
 
 ## Variables block — the rules
 
@@ -210,7 +303,7 @@ Always look up current production model IDs at provider docs:
 - Gemini: <https://ai.google.dev/gemini-api/docs/models>
 - OpenAI: <https://developers.openai.com/api/docs/models>
 
-Canonical IT Help Network uses `gemini-2.5-flash` and `gpt-5.4`. Beta Guide lists older OpenAI IDs (`gpt-5.2`, `gpt-5.2-pro`, `gpt-5-mini`, `gpt-5-nano`, `gpt-5`). Confirm with user before emitting `gpt-5.4` — it's not in published Beta Guide list. When in doubt, emit `gpt-5.2-pro` (Pro tier) or `gpt-5-mini` (mini tier).
+The canonical IT Help example uses `gemini-2.5-pro` and `gemini-2.5-flash`. When emitting OpenAI model IDs, confirm with the user — IDs change quickly across releases.
 
 ---
 
@@ -273,21 +366,19 @@ registry:
   agents:
     customAgent:
       info:
-        label: Custom Agent (PLACEHOLDER — fill in URL and skills)
+        label: Custom Agent (PLACEHOLDER — fill in skills)
       metadata:
-        protocol: a2a
         platform: Other
-        card:
+        interfaces:
           a2a:
-            protocolVersion: 0.3.0
-            name: customAgent
-            description: TODO
-            url: ${customAgent.url}
-            version: 1.0.0
-            capabilities: { pushNotifications: false }
-            defaultInputModes: [application/json, text/plain]
-            defaultOutputModes: [application/json, text/plain]
-            skills: []
+            card:
+              name: customAgent
+              description: TODO
+              version: 1.0.0
+              capabilities: { pushNotifications: false }
+              defaultInputModes: [application/json, text/plain]
+              defaultOutputModes: [application/json, text/plain]
+              skills: []
 ```
 
 When you finish the build, list every placeholder explicitly. **Never fabricate** asset IDs, URLs, or MCP tool names.

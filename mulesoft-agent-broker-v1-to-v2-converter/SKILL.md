@@ -83,8 +83,9 @@ V2 has these top-level sections: `agentNetwork`, `info`, `registry`, `context`, 
 
 For each V1 agent:
 - Lift `label` into `info.label`.
-- Keep `metadata.protocol` and `metadata.platform` as-is.
-- Build `metadata.card.a2a` using the broker's A2A card as a template (V1 leaf agents typically have no card). Defaults: `name` = the agent's `label`, `description` = the agent's `label`, `url` = `${ingressgw.url}/<agentName>`, `version: 1.0.0`, `protocolVersion: 0.3.0`, `capabilities.pushNotifications: false`, modes = `[application/json, text/plain]`.
+- Keep `metadata.platform` as-is. **Drop `metadata.protocol`** — GA replaces it with `metadata.interfaces`.
+- Build `metadata.interfaces.a2a.card` (A2A v1.0). Defaults: `name` = the agent's `label`, `description` = the agent's `label`, `version: 1.0.0`, `capabilities.pushNotifications: false`, modes = `[application/json, text/plain]`.
+- **GA cards do NOT include `protocolVersion` or `url`**. URLs live exclusively on `context.connections.<id>.url`.
 - One `skills` entry per agent. `id` = `<agentName>-<verb>` (e.g. `workday-create-record`); copy purpose into `name` and `description`.
 
 Don't invent capabilities V1 didn't claim. If V1 doesn't say `pushNotifications: true`, leave it `false`.
@@ -138,7 +139,7 @@ V1 puts the broker's A2A card and the orchestrator's prompt (`spec.instructions`
 - A2A card stays in `agent-network.yaml` under `brokers.<broker-id>.interfaces.a2a.card`.
 - Orchestrator prompt moves into `./brokers/<broker-id>.agent`.
 
-V2 broker entry:
+V2 broker entry (GA, A2A v1.0 — NO `protocolVersion`, NO `url` on the card):
 ```yaml
 brokers:
   <broker-id>:
@@ -149,9 +150,7 @@ brokers:
         card:
           name: <copied from V1 card.name>
           description: <copied from V1 card.description>
-          url: ${ingressgw.url}/<broker-id>
           version: 1.0.0
-          protocolVersion: 0.3.0
           capabilities:
             streaming: false
             pushNotifications: <copied from V1 card.capabilities.pushNotifications, default false>
@@ -230,3 +229,7 @@ Tell the user:
 - **Don't** forget `info.version` (required in V2, absent in V1).
 - **Don't** put auth blocks inside the registry — auth lives on `context.connections.<name>.authentication`.
 - **Don't** add `inputs:` to MCP actions during V1→V2 conversion. V1 has no schemas, so any `inputs:` block is guessed from prose.
+- **Don't** emit `metadata.protocol` or flat `metadata.card` on registry agents — GA uses `metadata.interfaces.<branch>.card`.
+- **Don't** emit `protocolVersion` or `url` inside an `interfaces.a2a.card` block — A2A v1.0 cards don't include them. URLs live on the connection.
+- **Don't** emit `kind: "a2a:response"` with a nested `task: a2a.task({...})` in echo nodes — GA uses `kind: "a2a:status_update_event"` (state + message) or `kind: "a2a:artifact_update_event"` (artifact + append/lastChunk). State values are `TASK_STATE_*` constants.
+- **Don't** emit `# @dialect: AGENTFABRIC=0.1-BETA` — use `# @dialect: AGENTFABRIC=0` for GA.
