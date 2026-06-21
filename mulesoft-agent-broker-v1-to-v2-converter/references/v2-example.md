@@ -2,6 +2,8 @@
 
 This is the canonical V2 (GA, A2A v1.0) output for the V1 input shown in `v1-example.md`. Mirror this style and structure when generating V2 projects.
 
+V1 was A2A v0.3-based, so V1 agents convert into the `metadata.interfaces.a2a_v03` branch (the GA back-compat path). The broker itself is A2A v1.0 (`brokers.<id>.interfaces.a2a`). If the user later migrates an external agent to v1.0, switch that agent to the `a2a` branch.
+
 ## Folder structure
 
 ```
@@ -37,10 +39,12 @@ registry:
       metadata:
         platform: Workday
         interfaces:
-          a2a:
+          a2a_v03:
             card:
               name: Workday Agent
               description: Creates the new-hire / customer record in Workday.
+              url: ${workdayAgent.url}
+              protocolVersion: 0.3.0
               version: 1.0.0
               capabilities:
                 pushNotifications: false
@@ -70,10 +74,12 @@ registry:
       metadata:
         platform: Salesforce
         interfaces:
-          a2a:
+          a2a_v03:
             card:
               name: Salesforce Agent
               description: Creates the customer's CRM profile in Salesforce.
+              url: ${salesforceAgent.url}
+              protocolVersion: 0.3.0
               version: 1.0.0
               capabilities:
                 pushNotifications: false
@@ -103,10 +109,12 @@ registry:
       metadata:
         platform: Zendesk
         interfaces:
-          a2a:
+          a2a_v03:
             card:
               name: Zendesk Agent
               description: Submits laptop and IT requests in Zendesk.
+              url: ${zendeskAgent.url}
+              protocolVersion: 0.3.0
               version: 1.0.0
               capabilities:
                 pushNotifications: false
@@ -136,10 +144,12 @@ registry:
       metadata:
         platform: Badging
         interfaces:
-          a2a:
+          a2a_v03:
             card:
               name: Badging Agent
               description: Initiates the customer badge request.
+              url: ${badgingAgent.url}
+              protocolVersion: 0.3.0
               version: 1.0.0
               capabilities:
                 pushNotifications: false
@@ -168,10 +178,12 @@ registry:
       metadata:
         platform: IT
         interfaces:
-          a2a:
+          a2a_v03:
             card:
               name: IT Agent
               description: Provisions PingID and IT system access for the customer.
+              url: ${itAgent.url}
+              protocolVersion: 0.3.0
               version: 1.0.0
               capabilities:
                 pushNotifications: false
@@ -201,10 +213,12 @@ registry:
       metadata:
         platform: License
         interfaces:
-          a2a:
+          a2a_v03:
             card:
               name: License Procurement Agent
               description: Procures software licenses for the new customer.
+              url: ${licenseProcurementAgent.url}
+              protocolVersion: 0.3.0
               version: 1.0.0
               capabilities:
                 pushNotifications: false
@@ -427,7 +441,7 @@ brokers:
 ## brokers/customer-onboarding.agent
 
 ```text
-# @dialect: AGENTFABRIC=0
+# @dialect: AGENTFABRIC=0.1
 
 system:
   instructions: "You are the Customer Onboarding Orchestrator. You coordinate onboarding of a new customer across Workday, Salesforce, Zendesk, Badging, License Procurement, and IT systems."
@@ -571,13 +585,14 @@ These are the specific decisions reflected in the V2 example, encoded so the con
 1. **Identifier renaming**: V1's PascalCase agent ids (`WorkdayAgentTest`) became camelCase (`workdayAgent`). The `Test` suffix was dropped because the V2 example treats this as the canonical project.
 2. **Connection rename**: V1 `WorkdayAgentTestConnection` → V2 `workdayAgentConnection`. Connection refs match their underlying registry id.
 3. **`kind: agent` → `kind: a2a`**: V1's `agent` connection kind is V2's `a2a`.
-4. **Registry agent shape (GA / A2A v1.0)**: each agent uses `metadata.interfaces.a2a.card`. The card has NO `protocolVersion` and NO `url` — the URL lives on the connection. The old `metadata.protocol: a2a` + flat `metadata.card.a2a` shape is removed.
-5. **URLs parameterized**: every external URL becomes `${<refName>.url}` in YAML and lives in `exchange.json` `metadata.variables`.
-6. **Auth on connections**: the Gemini API key auth that V1 stuffed in `spec.configuration.apiKey` is now `context.connections.geminiConnection.authentication.{kind: apiKey, apiKey: ${gemini.apiKey}}`. Authentication is required on `kind: llm` connections in GA.
-7. **Broker id**: `CustomerOnboardingBrokerTest` → `customer-onboarding` (kebab-case, used as both the broker id and the `.agent` filename stem).
-8. **MCP tool actions**: each tool listed in V1 `brokers.tools[*].mcp.allowed` got its own action in the `.agent` file. Action ids are descriptive (`match_email_to_address`, `send_slack_status_update`) but the `tool_name` is preserved exactly. **No `inputs:` block** — V1 doesn't declare tool input schemas, and the V2 runtime auto-discovers arguments from the MCP server.
-9. **Reasoning action aliases**: inside `orchestrator.reasoning.actions`, short readable aliases (e.g. `workday`, `slack_update`) point at the longer action ids.
-10. **Prompt preservation**: the V1 `spec.instructions` were copied into the orchestrator's `system.instructions` with only minor cleanup (e.g. fixing "this a long running task" → "this is a long running task", and replacing the dotted MCP tool name with the new alias). Bullets and ordering were preserved.
-11. **One orchestrator only**: even though V1's prompt has multiple steps, the V2 conversion keeps everything in a single `orchestrator` node. No router/executor/generator was introduced.
-12. **Echo node (GA)**: response uses `kind: "a2a:status_update_event"` with `state: "TASK_STATE_COMPLETED"` and a `message` built via `a2a.message(...)`. The Beta-era `kind: "a2a:response"` wrapping `task: a2a.task({...})` is gone.
-13. **Dialect line**: `# @dialect: AGENTFABRIC=0` pins to the GA dialect major.
+4. **Registry agent shape — `a2a_v03` branch**: V1 agents were A2A v0.3-based, so they convert into `metadata.interfaces.a2a_v03.card` (the GA back-compat path) preserving `protocolVersion: 0.3.0` and `url`. The Beta `metadata.protocol: a2a` + flat `metadata.card.a2a` shape is removed. Move an agent to `metadata.interfaces.a2a` only after the agent owner upgrades it to A2A v1.0.
+5. **Broker card uses `interfaces.a2a` (v1.0)**: the broker emits A2A v1.0 (the GA default). Backward compatibility is on the *consuming* side — clients on v0.3 still work because the runtime translates.
+6. **URLs parameterized**: every external URL becomes `${<refName>.url}` in YAML and lives in `exchange.json` `metadata.variables`.
+7. **Auth on connections**: the Gemini API key auth that V1 stuffed in `spec.configuration.apiKey` is now `context.connections.geminiConnection.authentication.{kind: apiKey, apiKey: ${gemini.apiKey}}`. Authentication is required on `kind: llm` connections in GA.
+8. **Broker id**: `CustomerOnboardingBrokerTest` → `customer-onboarding` (kebab-case, used as both the broker id and the `.agent` filename stem).
+9. **MCP tool actions**: each tool listed in V1 `brokers.tools[*].mcp.allowed` got its own action in the `.agent` file. Action ids are descriptive (`match_email_to_address`, `send_slack_status_update`) but the `tool_name` is preserved exactly. **No `inputs:` block** — V1 doesn't declare tool input schemas, and the V2 runtime auto-discovers arguments from the MCP server.
+10. **Reasoning action aliases**: inside `orchestrator.reasoning.actions`, short readable aliases (e.g. `workday`, `slack_update`) point at the longer action ids.
+11. **Prompt preservation**: the V1 `spec.instructions` were copied into the orchestrator's `system.instructions` with only minor cleanup (e.g. fixing "this a long running task" → "this is a long running task", and replacing the dotted MCP tool name with the new alias). Bullets and ordering were preserved.
+12. **One orchestrator only**: even though V1's prompt has multiple steps, the V2 conversion keeps everything in a single `orchestrator` node. No router/executor/generator was introduced.
+13. **Echo node (GA)**: response uses `kind: "a2a:status_update_event"` with `state: "TASK_STATE_COMPLETED"` and a `message` built via `a2a.message(...)`. The Beta `kind: "a2a:response"` wrapping `task: a2a.task({...})` is gone.
+14. **Dialect line**: `# @dialect: AGENTFABRIC=0.1` pins to GA dialect 0.1.

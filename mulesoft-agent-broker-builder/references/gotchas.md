@@ -2,7 +2,7 @@
 
 This file consolidates everything the published docs don't make obvious — the rules that bite during build/edit. When in doubt about a field name or shape, mirror `canonical-example.md`.
 
-GA uses **A2A v1.0**. Earlier A2A v0.3 patterns (e.g. `protocolVersion: 0.3.0` on the card, `metadata.protocol` + `metadata.card` on registry agents, `kind: "a2a:response"` echo with nested `task: a2a.task({...})`) no longer apply.
+GA is built on **A2A v1.0** and stays backward-compatible with A2A v0.3 clients via the `a2a_v03` registry branch. Beta patterns (`metadata.protocol` + flat `metadata.card`, `kind: "a2a:response"` echo with nested `task: a2a.task({...})`, `policies` as flat array) no longer apply.
 
 ## Project file layout
 
@@ -21,14 +21,13 @@ For multi-broker projects: one `.agent` per broker, each referenced from its own
 - `agentNetwork: 2.0.0` — unquoted. (V1 used `schemaVersion: 1.0.0`.)
 - `exchange.json` `"classifier": "agentic-network"`. (V1 used `agent-network`.)
 - `info.version` accepts non-semver strings (`v1` works in canonical).
-- `policies` are part of the GA schema even though the build flow doesn't surface them. Use Workflow B.4 to add later. **Shape changed in GA**: `policies` is an object with `inbound` and `outbound` arrays, not a flat list.
 
-## Registry agents — A2A v1.0 shape
+## Registry agents — interfaces and card shape
 
 GA places the agent card under `metadata.interfaces.<branch>.card` where `<branch>` is one of:
 
-- **`a2a`** — current A2A v1.0 card. Use this for almost every new agent.
-- **`a2a_v03`** — legacy A2A v0.3 card kept for back-compat with older agents that haven't migrated. Add only if the user explicitly asks.
+- **`a2a`** — current A2A v1.0 card. Use this for agents on v1.0.
+- **`a2a_v03`** — legacy A2A v0.3 card. Use this for agents that haven't migrated; the broker still talks to them transparently.
 - **`other`** — non-A2A interfaces (custom HTTP, etc.).
 
 ```yaml
@@ -40,10 +39,12 @@ registry:
       metadata:
         platform: Other
         interfaces:
-          a2a:
+          a2a_v03:                        # legacy v0.3 agent
             card:
               name: Help Center Agent
               description: ...
+              url: http://localhost:8080/helpCenterAgent
+              protocolVersion: 0.3.0
               version: 1.0.0
               capabilities: { pushNotifications: false }
               defaultInputModes: [application/json, text/plain]
@@ -51,26 +52,34 @@ registry:
               skills: [...]
 ```
 
-The old combination of `metadata.protocol: a2a` + flat `metadata.card.<branch>` is removed. Don't emit it.
+The Beta combination of `metadata.protocol: a2a` + flat `metadata.card.<branch>` is removed. Don't emit it.
 
-**A2A v1.0 card differences vs v0.3**: no `protocolVersion` field, no `url` field on the card itself. URLs live on `context.connections.<id>.url`.
+### A2A card differences by branch
+
+| Field | `a2a` (v1.0) | `a2a_v03` (legacy) |
+|---|---|---|
+| `url` | Required (per A2A v1.0 spec) | Required |
+| `protocolVersion` | Required | `0.3.0` |
+| `version`, `capabilities`, `defaultInputModes`, `defaultOutputModes`, `skills` | Required | Required |
+
+**Broker card exception**: a broker IS the endpoint, so its own card under `brokers.<id>.interfaces.a2a.card` typically omits `url` and `protocolVersion` (the runtime fills them in at deploy). The required-field rules apply to **registry agent cards** (external agents the broker calls). When in doubt for a broker, mirror `canonical-example.md`.
 
 ## Agent Script `.agent` file
 
 ### Dialect line
 
 ```text
-# @dialect: AGENTFABRIC=0
+# @dialect: AGENTFABRIC=0.1
 ```
 
-`AGENTFABRIC=0` pins to dialect major 0 for GA. Patch fixes (`AGENTFABRIC=0.1.2`) are invalid; semver major-or-major.minor only.
+`AGENTFABRIC=0.1` pins to dialect 0.1 or later within the major. Major-only (`AGENTFABRIC=0`) references the latest within that major. Patch fixes (`AGENTFABRIC=0.1.2`) are invalid; major-or-major.minor only.
 
 ### `config:` block — minimal canonical form
 
 ```text
 config:
   agent_name: "it-help-investigation"     # REQUIRED, kebab-case
-  default_llm: @llm.gemini_flash          # optional
+  default_llm: @llm.openai_mini           # optional
 ```
 
 `agent_name` is required and MUST be kebab-case. Do NOT add `name` or `id`. `label` and `description` are optional.
@@ -129,7 +138,7 @@ actions:
       severity: string
 ```
 
-**`with` parameters must be declared in `inputs:`** — passing an undeclared `with` parameter is a compile error. If `inputs:` is omitted, the invocation MUST have zero `with` parameters (other than `http_headers`).
+**`with` parameters must be declared in `inputs:`** — passing an undeclared `with` parameter is a compile error. If `inputs:` is omitted, the runtime auto-discovers tool arguments and the invocation MUST have zero `with` parameters (other than `http_headers`).
 
 **Slot-fill (`...`)** is only valid inside `reasoning.actions` MCP `with` clauses. Never in executor `run`.
 
@@ -155,7 +164,7 @@ Every action automatically accepts an optional `http_headers` parameter (an obje
 
 ## Echo node — A2A v1.0 update events
 
-GA echo replaces the old `kind: "a2a:response"` (with nested `task: a2a.task({...})`) with **A2A v1.0 update events**. Two `kind` values:
+GA echo replaces the Beta `kind: "a2a:response"` (with nested `task: a2a.task({...})`) with **A2A v1.0 update events**. Two `kind` values:
 
 | Kind | Required parameters | Optional parameters |
 |---|---|---|
@@ -192,7 +201,7 @@ echo addArtifact:
   lastChunk: false
 ```
 
-**Echo `state` enum.** GA uses `TASK_STATE_*` constants (uppercase, prefixed). One of:
+**Echo `state` enum.** GA emits `TASK_STATE_*` constants (uppercase, prefixed). One of:
 `TASK_STATE_SUBMITTED`, `TASK_STATE_WORKING`, `TASK_STATE_INPUT_REQUIRED`, `TASK_STATE_COMPLETED`, `TASK_STATE_FAILED`, `TASK_STATE_CANCELED`, `TASK_STATE_REJECTED`. Custom values are rejected.
 
 **No `a2a.task(...)` wrapper.** GA echo doesn't wrap its payload in `a2a.task({...})`. Build status updates with `state: "..."` + `message: a2a.message(...)` directly. The runtime aggregates events into the canonical Task on the server side.
@@ -265,7 +274,7 @@ Wrong placement is a compile error.
           outbound:
             - ref: { name: rate-limit-policy }
   ```
-  The old shape (flat array of policy ids) is removed.
+  The Beta shape (flat array of policy ids) is removed.
 
 ## Authentication kind casing (GA)
 
@@ -281,7 +290,7 @@ Wrong placement is a compile error.
 Default to `apiKey`, `oauth2-client-credentials`, `oauth2-obo`. `in-task-authorization-code` is for OAuth2 step-up — don't emit unless explicitly requested.
 
 GA additions:
-- **`distributed`** field on `oauth2-obo` and `in-task-authorization-code` blocks (boolean) — set when the auth flow spans services.
+- **`distributed`** field on `oauth2-obo` and `in-task-authorization-code` blocks (boolean) — set when the auth flow spans services or replicas.
 - `in-task-authorization-code` accepts `subjectTokenType` and `requestedTokenType` (token-exchange semantics).
 
 ## Variables block — the rules
@@ -303,7 +312,7 @@ Always look up current production model IDs at provider docs:
 - Gemini: <https://ai.google.dev/gemini-api/docs/models>
 - OpenAI: <https://developers.openai.com/api/docs/models>
 
-The canonical IT Help example uses `gemini-2.5-pro` and `gemini-2.5-flash`. When emitting OpenAI model IDs, confirm with the user — IDs change quickly across releases.
+GA-supported families: GPT-5 family (OpenAI / Azure OpenAI) and Gemini 2.5 / 3 family. When emitting model IDs, confirm with the user — IDs change quickly across releases.
 
 ---
 
@@ -374,6 +383,8 @@ registry:
             card:
               name: customAgent
               description: TODO
+              url: ${customAgent.url}
+              protocolVersion: "1.0"
               version: 1.0.0
               capabilities: { pushNotifications: false }
               defaultInputModes: [application/json, text/plain]
@@ -391,7 +402,7 @@ Per asset, atomically:
 3. Confirm with user before next asset.
 
 **Naming conventions** (from canonical):
-- Asset id: camelCase (`helpCenterAgent`, `escalationMcp`, `gemini`).
+- Asset id: camelCase (`helpCenterAgent`, `escalationMcp`, `openAiMini`).
 - Connection id: `<assetId>Connection`.
 - Variables: `<assetId>.url`, `<assetId>.apiKey`, etc.
 
@@ -402,7 +413,7 @@ Per asset, atomically:
 **CR-18 nuance — least privilege.** Hard business constraints are enforced by **router conditions**, not prompts.
 
 - **Irreversible / high-stakes mutations** (escalate, delete, restart, send-to-customer) MUST be in `executor` nodes gated by `router`. NEVER on `subagent`/`orchestrator` — the LLM could invoke them bypassing the router.
-- **Idempotent updates** integral to the compound goal (status updates, ticket updates, log entries) MAY be on a `subagent`/`orchestrator`. Canonical IT Help does this: `crossPlatformTriage` (orchestrator) has `update_jira_ticket` because updating Jira is part of the compound triage goal. **It does NOT have `escalate_ticket`** — that's irreversible and lives on executors gated by routers.
+- **Idempotent updates** integral to the compound goal (status updates, ticket updates, log entries) MAY be on a `subagent`/`orchestrator`. Canonical IT Help does this: `crossPlatformTriage` (orchestrator) has `update_ticket` because updating Jira is part of the compound triage goal. **It does NOT have `escalate`** — that's irreversible and lives on executors gated by routers.
 
 The line: irreversible/high-stakes (executor-only, router-gated) vs idempotent/domain-natural (orchestrator OK).
 
@@ -416,21 +427,6 @@ The line: irreversible/high-stakes (executor-only, router-gated) vs idempotent/d
 Use `default_llm` for common case. Override per-node only on exceptions.
 
 **Action aliases** inside `reasoning.actions` — short readable names (`search_help`, `slack_update`, `escalate`). The alias is what the LLM sees — clear aliases reduce hallucinated tool calls.
-
-### Worked example — IT Help Network
-
-| Node | Type | Actions | Count | LLM |
-|---|---|---|---|---|
-| `classifySeverity` | generator | (none) | 0 | gemini_flash (default) |
-| `crossPlatformTriage` | orchestrator | help_center_agent, license_procurement_agent, update_jira_ticket | 3 | openai_gpt (override) |
-| `helpSummary` / `licenseSummary` | generator | (none) | 0 | gemini_flash |
-| `escalateTicket` / `escalateUnresolved` | executor | escalate_ticket | 1 | – |
-
-Why `crossPlatformTriage` is orchestrator: coordinates **multiple** actions (search → check license → update ticket) toward a compound goal.
-
-Why `classifySeverity` is generator: pure classification, no actions, no HITL.
-
-Why `escalate_ticket` is on executors and NOT orchestrator: irreversible mutation, gated by router (severity for high-priority, resolution for unresolved).
 
 ### Common mistakes
 
@@ -493,8 +489,8 @@ The general CLI also supports username/password auth via `anypoint-cli-v4 conf u
 If env vars are unset and a CLI is being asked to do an auth-bearing action, point user at <https://docs.mulesoft.com/anypoint-cli/latest/auth>. Do not paste credentials, even temporarily.
 
 Install:
-- Agent Fabric plugin: `npm i mulesoft-anypoint-cli-agent-fabric-plugin` (renamed from `anypoint-cli-agent-fabric-plugin` — use `--force` if hitting an EXIST conflict).
-- General CLI v4: `npm install -g anypoint-cli-v4`.
+- Agent Fabric plugin: `npm i mulesoft-anypoint-cli-agent-fabric-plugin`
+- General CLI v4: `npm install -g anypoint-cli-v4`
 
 ### Exchange search — Phase 1 preview, Phase 2 registration
 

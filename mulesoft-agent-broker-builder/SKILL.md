@@ -29,21 +29,9 @@ The MuleSoft Agent Network GA docs (Anypoint Code Builder section) are the autho
 
 ## Tooling integration (CLI-first, MCP-fallback)
 
-| Capability | Step | Preferred: CLI | Fallback: MCP | Last resort |
-|---|---|---|---|---|
-| Scaffold project | 0 | Skill writes scaffold directly (CLI's `agent-network:project:create` overwrites our canonical structure). | `create_agent_network_project` — skip. | — |
-| Configure YAML | 0–5 | Skill IS the guided experience. | `configure_agent_network_yaml` — skip (returns prompt template that duplicates skill). | — |
-| Search Exchange | 1, 2 | `anypoint-cli-v4 exchange asset search --search "<query>" --type <type>` | `search_asset` — call when present. | Ask user for `groupId`/`assetId`/`version`. |
-| Validate / build | 6 | `agent-network:project:build` — runs Maven validation, generates artifacts. | `validate_project` — call when present. | Structural checklist + doc link. |
-| Publish to Exchange | 7 | `agent-network:project:publish` | `publish_agent_network_assets` | Doc link. |
-| Deploy to runtime | 8 | `agent-network:project:deploy` | `deploy_agent_network` | Doc link. |
-| Set up gateways | one-time | `agent-network:setup:gateways` | *(no MCP equivalent)* | Doc link. |
+The skill prefers the **Anypoint CLI Agent Fabric plugin** (`mulesoft-anypoint-cli-agent-fabric-plugin`) for validate/publish/deploy and **Anypoint CLI v4** (`anypoint-cli-v4`) for Exchange search. The MuleSoft MCP server (`mcp__mulesoft__*`) is the fallback. **Detection order at each step:** (1) `command -v` the CLI; (2) check for the MCP tool; (3) graceful degradation.
 
-**Detection order** at each step: (1) check the relevant CLI is installed (`command -v anypoint-cli-agent-fabric-plugin` for build/publish/deploy/gateways; `command -v anypoint-cli-v4` for search). (2) if absent, check MCP tools (prefix `mcp__mulesoft__`). (3) else fall back.
-
-**CLI auth** is environment-based: `ANYPOINT_CLIENT_ID`, `ANYPOINT_CLIENT_SECRET`, `ANYPOINT_ORG`, `ANYPOINT_ENV`, optional `ANYPOINT_HOST`. Never paste credentials inline. If env vars are unset, point user at <https://docs.mulesoft.com/anypoint-cli/latest/auth>.
-
-See `references/gotchas.md` § "Tooling integration" for full command syntax, env-var details, and graceful-degradation paths.
+See `references/gotchas.md` § "Tooling integration" for the full capability matrix, CLI command syntax, env-var auth (`ANYPOINT_CLIENT_ID/SECRET/ORG/ENV`), and graceful-degradation paths.
 
 ---
 
@@ -107,7 +95,7 @@ After registering: ask the user **what `tool_name`** they intend to call (requir
 
 ### 2c — A2A agent(s) (conditional)
 
-Inline schema requires `info.label` and `metadata.interfaces.a2a.card` — a full A2A v1.0 Agent Card with `name`, `description`, `version`, `capabilities`, `defaultInputModes`, `defaultOutputModes`, `skills`. Note: GA cards do NOT include `protocolVersion` or `url` — URL lives on the connection. For agents still on legacy A2A v0.3, use `metadata.interfaces.a2a_v03.card` instead. Ask "Add another?"
+Inline schema requires `info.label` and an interfaces branch — `a2a` for current A2A v1.0 agents, `a2a_v03` for legacy A2A v0.3 agents (Agent Broker stays backward-compatible). The card under `metadata.interfaces.<branch>.card` includes `name`, `description`, `url`, `protocolVersion`, `version`, `capabilities`, `defaultInputModes`, `defaultOutputModes`, `skills`. See `references/gotchas.md` § "Registry agents" for the per-branch shape. Ask "Add another?"
 
 ## Step 3: Define the Broker (Phase 3 — Agent Script)
 
@@ -129,7 +117,7 @@ Decisions:
 6. **Hard constraints from Phase 1 → router nodes, not prompts.** The constrained action goes in an `executor` gated by a `router`. Prompts can be ignored, router conditions cannot.
 7. **First node after trigger should NOT be a pass-through executor** that copies `@request.payload.message`. Reference `@request.payload.message.parts[0].text` directly downstream.
 8. **Edges.** Every non-terminal node has `on_exit: -> transition to @<nodeType>.<nodeId>`. Routers declare `routes:` + `otherwise:` and have NO `on_exit` (`transition to` inside router `on_exit` is a compile error).
-9. **Echo terminus.** Every reachable path ends in `echo`. `a2a.message(...)`, `a2a.artifact(...)`, `a2a.textPart(...)`, `a2a.dataPart(...)`, `a2a.filePart(...)` and `uuid()` are functions, NOT references — don't prefix with `@`. `state` (on `a2a:status_update_event`) must be: `TASK_STATE_SUBMITTED | TASK_STATE_WORKING | TASK_STATE_INPUT_REQUIRED | TASK_STATE_COMPLETED | TASK_STATE_FAILED | TASK_STATE_CANCELED | TASK_STATE_REJECTED`.
+9. **Echo terminus.** Every reachable path ends in `echo`. See `references/gotchas.md` § "Echo node" for the two `kind` values, the `TASK_STATE_*` enum, and the function-vs-reference rules for `a2a.*` helpers.
 
 For full compile-error rules see `references/gotchas.md` § "Compile-error rules". For the structural template see `references/canonical-example.md`.
 
@@ -137,23 +125,11 @@ Update the `brokers` entry in `agent-network.yaml` to reference the new `.agent`
 
 ## Step 4: Asset Assignment to Graph (Phase 4)
 
-Bind actions to nodes, respecting least-privilege.
+Bind actions to nodes. Add an `actions:` entry per asset in the `.agent` file (A2A actions are `target` + `kind` only, no `inputs:`; MCP actions take `target`, `kind`, `tool_name`, optional `inputs:`). Reference from `reasoning.actions` (subagent/orchestrator) or `do: run` (executor).
 
-1. **Action definitions** in the `.agent` file:
-   - **A2A**: `target: "a2a://<connection>"`, `kind: "a2a:send_message"`. **No `inputs:`.**
-   - **MCP**: `target: "mcp://<connection>"`, `kind: "mcp:tool"`, `tool_name: "..."`, optional `inputs:`. Only declare `inputs:` if you know the parameters.
-
-2. **Action invocation rules** — see `references/gotchas.md` § "Compile-error rules" for the full table. Critical: A2A inside `reasoning.actions` is bare reference (no `with message =`); A2A inside `executor` `do: run` REQUIRES `with message =`.
-
-3. **`http_headers` is the only implicit parameter** — never declare in `inputs:`. Use to propagate auth: `with http_headers = {"Authorization": @request.headers["Authorization"]}`.
-
-4. **Asset cap (guideline)** — ~4 actions max per `subagent`/`orchestrator`. Beyond that, propose splitting or moving deterministic actions to `executor`.
-
-5. **LLM choice per node.** Reasoning-heavy → Pro tier. Cheap classification/summary → Flash/mini tier. Use `default_llm` for common case; override per-node only on exceptions.
-
-6. **Action aliases** inside `reasoning.actions` — short readable names (`search_help`, `slack_update`). The alias is what the LLM sees.
-
-**Least-privilege (CR-18 nuance).** Irreversible/high-stakes mutations (escalate, delete, send-to-customer) MUST be in `executor` nodes gated by `router`. Idempotent updates (status updates, ticket notes) MAY live on a `subagent`/`orchestrator`. The line: irreversible (executor-only, router-gated) vs idempotent/domain-natural (orchestrator OK).
+For binding rules and cap/least-privilege guidance, see `references/gotchas.md`:
+- **§ "Compile-error rules — action invocation"** — A2A bare reference vs `with message =` in executor; MCP `with` rules; `http_headers` implicit.
+- **§ "Stage 4: Bind to nodes"** — 4-action cap, CR-18 least-privilege (irreversible mutations in `executor` + `router`, idempotent updates OK on orchestrator), LLM tier per node, action alias naming.
 
 ## Step 5: Instruction Refinement (Phase 5)
 
@@ -183,10 +159,7 @@ Cleanup, then validate.
 4. Remove orphaned action definitions in `.agent` file.
 5. Remove empty YAML keys (`registry.llms:` with no entries → drop the key).
 
-**Validate (CLI-first):**
-- If `anypoint-cli-agent-fabric-plugin` is installed: run `anypoint-cli-agent-fabric-plugin agent-network project build --path <projectPath>` from the project dir. This validates schema and generates the deployable artifact.
-- Else if MCP `validate_project` is available: call it with `projectPath`.
-- Else: run the structural checklist below and tell the user to install the CLI plugin (`npm i mulesoft-anypoint-cli-agent-fabric-plugin`) or use the MCP server in their IDE.
+**Validate.** Run the build command (CLI preferred → MCP fallback → structural checklist below + install hint). Full command syntax in `references/gotchas.md` § "Step 6 — Validate / build".
 
 **Structural checklist:**
 - Every node reachable from trigger? No orphans.
@@ -209,29 +182,19 @@ When clean: *"Project is validated and ready. Want to publish to Exchange and de
 
 ## Step 7: Publish (optional)
 
-Only if user wants to. Confirm Anypoint auth context first (CLI env vars or MCP session). Confirm `exchange.json` has no empty secrets.
+Only if user wants to. Prereqs: authenticated CLI/MCP context; `exchange.json` has `assetVersion` and no empty `default: ""` for `secret: true` variables.
 
-**CLI-first:**
-- If CLI is installed: `anypoint-cli-agent-fabric-plugin agent-network project publish --path <projectPath>` (add `--environment <name>` if not Sandbox; add `--json` to capture asset URLs programmatically).
-- Else if MCP `publish_agent_network_assets` is available: call it with `assetVersion` (semver) and optional `groupId`.
-- Else: point at <https://docs.mulesoft.com/anypoint-code-builder/af-publish-agent-network-assets>.
-
-Surface published asset URLs from the output.
+Run the publish command (CLI preferred → MCP fallback → doc link). Surface published asset URLs from the output. Full command syntax is in `references/gotchas.md` § "Step 7 — Publish".
 
 ## Step 8: Deploy (optional)
 
 Only if user wants to. Publish must have happened first.
 
-**One-time per private space:** if the target space has no gateways yet, run `anypoint-cli-agent-fabric-plugin agent-network setup gateways --target-space <name>` first. Defaults: `agent-network-ingress-gw`, `agent-network-egress-gw`, `agent-network-space`.
+Ask the user: `environmentName`, `targetSpace` (private space), and any deployment properties for env-specific secrets (e.g., `--property openai.apiKey:STAGING_API_KEY`).
 
-Ask the user: `environmentName`, `targetSpace` (private space name), and any deployment properties for env-specific secrets (e.g., `--property openai.apiKey:STAGING_API_KEY`).
+**One-time setup per private space:** if the target space has no gateways yet, run the gateway setup command first.
 
-**CLI-first:**
-- If CLI is installed: `anypoint-cli-agent-fabric-plugin agent-network project deploy --environment <env> --target-space <space> [--property k:v ...] [--ingress-gw <name>] [--egress-gw <name>]`. Wait for completion (default) or pass `--dont-wait-for-agent-network` for CI pipelines.
-- Else if MCP `deploy_agent_network` is available: call it with `environmentName`, `privateSpaceName`, `ingressGatewayName`, `egressGatewayName`.
-- Else: point at <https://docs.mulesoft.com/anypoint-code-builder/af-deploy-agent-network-targets>.
-
-Surface deployment URL/ID from output.
+Run the deploy command (CLI preferred → MCP fallback → doc link). Surface deployment URL/ID. Full command syntax, gateway defaults, and CI flags are in `references/gotchas.md` § "Step 8 — Deploy".
 
 ---
 
