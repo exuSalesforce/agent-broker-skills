@@ -455,8 +455,8 @@ The skill prefers the **Anypoint CLI Agent Fabric plugin** for validate/publish/
 
 | Capability | Step | CLI command (preferred) | MCP tool (fallback) | If neither |
 |---|---|---|---|---|
-| Scaffold project | 0 | *(skip — skill writes scaffold)* | *(skip — `create_agent_network_project`)* | — |
-| Configure YAML | 0–5 | *(skill IS the experience)* | *(skip — `configure_agent_network_yaml` returns a duplicate prompt template)* | — |
+| Scaffold project | 0 | `agent-network project create --name <n> --output-dir <d> --create-dir` | `create_agent_network_project` | Write canonical scaffold directly; warn about missing `groupId` |
+| Configure YAML | 0–5 | *(skill IS the experience — edits files in place)* | *(skip — `configure_agent_network_yaml` returns a duplicate prompt template)* | — |
 | Search Exchange | 1, 2 | `anypoint-cli-v4 exchange asset search` | `search_asset` | Ask user for `groupId`/`assetId`/`version` |
 | Validate / build | 6 | `agent-network project build` | `validate_project` | Structural checklist + doc link |
 | Publish to Exchange | 7 | `agent-network project publish` | `publish_agent_network_assets` | Doc link |
@@ -560,9 +560,24 @@ The skill works in Cursor, standalone Claude Code, Codex — anywhere without Mu
 - **Step 7 — publish:** Point at <https://docs.mulesoft.com/anypoint-code-builder/af-publish-agent-network-assets>.
 - **Step 8 — deploy:** Point at <https://docs.mulesoft.com/anypoint-code-builder/af-deploy-agent-network-targets>.
 
+### Step 0 — Scaffold
+
+**CLI:** `anypoint-cli-agent-fabric-plugin agent-network project create --name <project-name> --output-dir <parent-dir> --create-dir`. Key flags:
+- `-n, --name=<value>` (required) — project name; becomes default `assetId` (lowercased, hyphenated).
+- `-o, --output-dir=<value>` — parent directory for the new project (default: current dir).
+- `--create-dir` — create a new directory at `output-dir` named after the project (recommended; without it, files land directly in `output-dir`).
+- `--asset-id`, `--asset-version` (default `0.0.0`), `--api-version` (default `v1`) — override the defaults written into `exchange.json`.
+- `--organization=<orgId>` / `--environment=<name>` — pulled from `ANYPOINT_ORG` / `ANYPOINT_ENV` env vars by default.
+
+The CLI writes a starter `agent-network.yaml` (with `agentNetwork: 2.0.0`), `exchange.json` (with the correct `groupId`/`organizationId`/`classifier: agentic-network`), and an empty `brokers/` directory. The skill then edits these in place.
+
+**MCP fallback:** `create_agent_network_project` — same inputs as the CLI.
+
+**No-tool fallback:** write the canonical scaffold (per `canonical-example.md`) directly. Tell the user to fill in `groupId`/`organizationId` in `exchange.json` before publish.
+
 ### What this skill must NOT do
 
-- **Don't call `configure_agent_network_yaml` or CLI `create`** — both duplicate skill logic and overwrite the canonical scaffold.
+- **Don't call `configure_agent_network_yaml`** — it returns a duplicate prompt template that overlaps with the skill's guided experience.
 - **Don't silently shell out** for auth-bearing actions without confirming env vars are set; never paste credentials inline.
 - **Don't auto-deploy.** Step 6 ends at "validated"; 7 is publish; 8 is deploy. Both opt-in.
 - **Don't auto-insert missing assets** when validation reports a dangling reference. Ask user.

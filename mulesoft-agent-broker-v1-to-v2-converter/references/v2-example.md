@@ -360,10 +360,10 @@ brokers:
   "main": "agent-network.yaml",
   "name": "prod-customerOnboardGemini-v2",
   "classifier": "agentic-network",
-  "organizationId": "b4c12f0a-c376-4561-878c-f4f0540c5407",
+  "organizationId": "00000000-0000-0000-0000-000000000000",
   "descriptorVersion": "1.0.0",
   "tags": [],
-  "groupId": "b4c12f0a-c376-4561-878c-f4f0540c5407",
+  "groupId": "00000000-0000-0000-0000-000000000000",
   "assetId": "prod-customeronboardgemini-v2",
   "version": "1.0.0",
   "description": "Customer onboarding agent network (2.0). Coordinates onboarding across Workday, Salesforce, Zendesk, Badging, License Procurement, and IT systems using Gemini.",
@@ -373,56 +373,56 @@ brokers:
       "workdayAgent": {
         "url": {
           "description": "Workday Agent URL",
-          "default": "https://workday-agent-v1-2p52mj.5sc6y6-4.usa-e2.cloudhub.io/workday-agent/",
+          "default": "https://example.com/workday-agent/",
           "secret": false
         }
       },
       "salesforceAgent": {
         "url": {
           "description": "Salesforce Agent URL",
-          "default": "https://salesforce-agent-v1-2p52mj.5sc6y6-2.usa-e2.cloudhub.io/salesforce-agent/",
+          "default": "https://example.com/salesforce-agent/",
           "secret": false
         }
       },
       "zendeskAgent": {
         "url": {
           "description": "Zendesk Agent URL",
-          "default": "https://zendesk-agent-v1-2p52mj.5sc6y6-3.usa-e2.cloudhub.io/zendesk/",
+          "default": "https://example.com/zendesk-agent/",
           "secret": false
         }
       },
       "badgingAgent": {
         "url": {
           "description": "Badging Agent URL",
-          "default": "https://badging-agent-v1-2p52mj.5sc6y6-4.usa-e2.cloudhub.io/badge-agent/",
+          "default": "https://example.com/badging-agent/",
           "secret": false
         }
       },
       "itAgent": {
         "url": {
           "description": "IT Agent URL",
-          "default": "https://it-agent-v1-2p52mj.5sc6y6-4.usa-e2.cloudhub.io/pingid/",
+          "default": "https://example.com/it-agent/",
           "secret": false
         }
       },
       "licenseProcurementAgent": {
         "url": {
           "description": "License Procurement Agent URL",
-          "default": "https://license-procurement-agent-v1-2p52mj.5sc6y6-4.usa-e2.cloudhub.io/license/",
+          "default": "https://example.com/license-procurement-agent/",
           "secret": false
         }
       },
       "talentPoolMcp": {
         "url": {
           "description": "Customer Talent Pool MCP Server URL",
-          "default": "https://talent-pool-arvldt.5sc6y6-3.usa-e2.cloudhub.io/",
+          "default": "https://example.com/talent-pool-mcp/",
           "secret": false
         }
       },
       "slackMcp": {
         "url": {
           "description": "Customer Slack MCP Server URL",
-          "default": "https://agent-fabric-slack-xapi-y9t5cg.5sc6y6-4.usa-e2.cloudhub.io/",
+          "default": "https://example.com/slack-mcp/",
           "secret": false
         }
       },

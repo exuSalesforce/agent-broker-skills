@@ -39,12 +39,26 @@ See `references/gotchas.md` § "Tooling integration" for the full capability mat
 
 The 6 phases below structure the build experience. Each phase ends with a stop point — wait for the user. Apply each user response immediately (no batch-then-update).
 
-## Step 0: Pre-flight
+## Step 0: Pre-flight + scaffold
 
-1. **Detect existing project.** If working folder has `agent-network.yaml` + `exchange.json` + `brokers/`, ask: *"Edit this one, or scaffold new in a sibling folder?"* Default edit (Workflow B). If new, get name and continue in sibling.
+1. **Detect existing project.** If working folder has `agent-network.yaml` + `exchange.json` + `brokers/`, ask: *"Edit this one, or scaffold new in a sibling folder?"* Default edit (Workflow B).
 2. **Detect schema version.** `schemaVersion: 1.0.0` → route to converter.
 3. **Confirm intent in one sentence:** *"You want me to build a new Agent Broker that does X. Sound right?"*
-4. **Capture network `info`** for `agent-network.yaml`: ask for `info.label` (required) and `info.description` (optional). Default `info.version` to `1.0.0` unless user provides one.
+4. **Collect scaffold inputs** (ask before invoking CLI):
+   - **Project name** (kebab-case, e.g. `it-help-investigation`) — also becomes the default `assetId`.
+   - **Output directory** (default: current working dir).
+   - **Asset version** (default `0.0.0` while in development; user can bump on first publish).
+5. **Scaffold via CLI.** Run the create command from the parent directory:
+   ```
+   anypoint-cli-agent-fabric-plugin agent-network project create \
+     --name <project-name> \
+     --output-dir <parent-dir> \
+     --create-dir
+   ```
+   This produces `<project-name>/agent-network.yaml` + `exchange.json` + `brokers/` with the correct `groupId`/`organizationId` (pulled from `ANYPOINT_ORG`) and starter template. Skill then edits the generated files in place.
+   - If CLI is unavailable AND `mcp__mulesoft__create_agent_network_project` is present, call the MCP tool with the same inputs.
+   - If neither is available, fall back to writing the canonical scaffold structure directly (`agent-network.yaml` with `agentNetwork: 2.0.0`, `exchange.json` with `"classifier": "agentic-network"`, empty `brokers/`) and tell the user the `groupId`/`organizationId` placeholder needs to be filled in before publish.
+6. **Capture network `info`** for `agent-network.yaml`: ask for `info.label` (required) and `info.description` (optional). Default `info.version` to `1.0.0` unless user provides one. Apply to the scaffold immediately.
 
 ## Step 1: Functional Requirements (Phase 1 — be strict)
 

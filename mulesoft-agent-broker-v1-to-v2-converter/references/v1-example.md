@@ -169,37 +169,37 @@ connections:
     ref:
       name: WorkdayAgentTest
     spec:
-      url: https://workday-agent-v1-2p52mj.5sc6y6-4.usa-e2.cloudhub.io/workday-agent/
+      url: https://example.com/workday-agent/
   SalesforceAgentTestConnection:
     kind: agent
     ref:
       name: SalesforceAgentTest
     spec:
-      url: https://salesforce-agent-v1-2p52mj.5sc6y6-2.usa-e2.cloudhub.io/salesforce-agent/
+      url: https://example.com/salesforce-agent/
   ZendeskAgentTestConnection:
     kind: agent
     ref:
       name: ZendeskAgentTest
     spec:
-      url: https://zendesk-agent-v1-2p52mj.5sc6y6-3.usa-e2.cloudhub.io/zendesk/
+      url: https://example.com/zendesk-agent/
   BadgingAgentTestConnection:
     kind: agent
     ref:
       name: BadgingAgentTest
     spec:
-      url: https://badging-agent-v1-2p52mj.5sc6y6-4.usa-e2.cloudhub.io/badge-agent/
+      url: https://example.com/badging-agent/
   ItAgentTestConnection:
     kind: agent
     ref:
       name: ItAgentTest
     spec:
-      url: https://it-agent-v1-2p52mj.5sc6y6-4.usa-e2.cloudhub.io/pingid/
+      url: https://example.com/it-agent/
   LicenseProcurementAgentConnection:
     kind: agent
     ref:
       name: LicenseProcurementAgent
     spec:
-      url: https://license-procurement-agent-v1-2p52mj.5sc6y6-4.usa-e2.cloudhub.io/license/
+      url: https://example.com/license-procurement-agent/
   CustomerGeminiLlmTestConnection:
     kind: llm
     ref:
@@ -214,13 +214,13 @@ connections:
     ref:
       name: CustomerTalentPoolMcp
     spec:
-      url: https://talent-pool-arvldt.5sc6y6-3.usa-e2.cloudhub.io/
+      url: https://example.com/talent-pool-mcp/
   CustomerSlackMcpConnection:
     kind: mcp
     ref:
       name: CustomerSlackMcp
     spec:
-      url: https://agent-fabric-slack-xapi-y9t5cg.5sc6y6-4.usa-e2.cloudhub.io/
+      url: https://example.com/slack-mcp/
 ```
 
 ## exchange.json
@@ -230,7 +230,7 @@ connections:
   "main": "agent-network.yaml",
   "name": "prod-customerOnboardGemini",
   "classifier": "agent-network",
-  "organizationId": "b4c12f0a-c376-4561-878c-f4f0540c5407",
+  "organizationId": "00000000-0000-0000-0000-000000000000",
   "descriptorVersion": "1.0.0",
   "tags": [],
   "metadata": {
@@ -249,7 +249,7 @@ connections:
     }
   },
   "dependencies": [],
-  "groupId": "b4c12f0a-c376-4561-878c-f4f0540c5407",
+  "groupId": "00000000-0000-0000-0000-000000000000",
   "assetId": "prod-customeronboardgemini",
   "version": "1.0.1"
 }
